@@ -8,7 +8,7 @@ Using Transformers gives me some pretty significant limitations but I'm also pla
 ## Encoder API
 This is a really simple RESTful API server that provides ELMO-like contextual word embeddings from 🤗 Transformers BERT models on-demand.
 <br><br>
-SDK and documentation coming soon!! :)
+SDK and documentation coming soon!! :) Maybe I'll make it more user-friendly too? idk lmao
 
 ## Distance //IN DEVELOPMENT//
 This is a package that provides resources to compute the distance between two clouds of contextualized word embeddings structured in WUMs (word usage matrices) in different periods of time, using techniques listed in Kutuzov (2020)
