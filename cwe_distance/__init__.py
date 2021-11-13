@@ -90,9 +90,9 @@ class wum:
 
     def div(self, other_wum):
         p1, p2 = self.prototype(), other_wum.prototype()
-        dists_from_p1 = np.array([distance.cosine(vec, p1) for vec in self.u1])
-        dists_from_p2 = np.array([distance.cosine(vec, p2) for vec in self.u2])
-        var_coefficient_1 = np.sum(dists_from_p1) / self.u1_size
-        var_coefficient_2 = np.sum(dists_from_p2) / self.u2.size
+        dists_from_p1 = np.array([distance.cosine(vec, p1) for vec in self.u])
+        dists_from_p2 = np.array([distance.cosine(vec, p2) for vec in other_wum.get_wum()])
+        var_coefficient_1 = np.sum(dists_from_p1) / self.u.size
+        var_coefficient_2 = np.sum(dists_from_p2) / other_wum.get_wum().size
 
         return abs(var_coefficient_1 - var_coefficient_2)
