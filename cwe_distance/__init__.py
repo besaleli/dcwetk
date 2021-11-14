@@ -15,10 +15,12 @@ def plot_wsd_cluster(candidate, plotDim=2):
 
     if plotDim == 2:
         plt.scatter(data['x'], data['y'], c=df['cluster'], cmap='viridis')
+        plt.show()
     elif plotDim == 3:
         fig = plt.figure()
         ax = fig.add_subplot(projection='3d')
         ax.scatter(data['x'], data['y'], data['z'], c=df['cluster'], cmap='viridis')
+        plt.show()
 
 
 def pca(data, n_components=2, extra_columns=None, asDF=True):
