@@ -7,63 +7,24 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-def plot_wsd_cluster(candidate, plotDim=2):
+def plot_wsd_cluster(candidate):
+    """
+    {'n_clusters': candidate[0],
+                             'clustering_method': candidate[1].__name__,
+                             'silhouetteScore': candidate[2],
+                             'df': df}
+    """
     df = candidate['df']
-    pcaEmbeddings = df['cwe_pca']
-    varNames = ['x', 'y', 'z']
-    data = {varNames[i]: list(map(lambda j: j[i], pcaEmbeddings)) for i in range(plotDim)}
+    n_clusters_str = '# Clusters: ' + str(candidate['n_clusters'])
+    clustering_method_str = 'Clustering Method: ' + candidate['clustering_method']
+    silhouette_score_str = 'Silhouette Score: ' + str(np.round(candidate['silhouette_score'], decimals=4))
 
-    if plotDim == 2:
-        plt.scatter(data['x'], data['y'], c=df['cluster'], cmap='viridis')
-        plt.show()
-    elif plotDim == 3:
-        fig = plt.figure()
-        ax = fig.add_subplot(projection='3d')
-        ax.scatter(data['x'], data['y'], data['z'], c=df['cluster'], cmap='viridis')
-        plt.show()
-
-
-def pca(data, n_components=2, extra_columns=None, asDF=True):
-    model = PCA(n_components=n_components)
-    principalComponents = model.fit_transform(data)
-
-    if asDF:
-        if extra_columns is None:
-            extra_columns = []
-        principalDF = pd.DataFrame(data=principalComponents, columns=['pc1', 'pc2'])
-        principleDF_with_extra_cols = pd.concat([principalDF] + [extra_columns], axis=1)
-
-        return principleDF_with_extra_cols, model.get_precision()
-    else:
-        return principalComponents, model.get_precision()
-
-
-def get_silhouette_score(data, n_clusters=1, model=AgglomerativeClustering):
-    m = model(n_clusters=n_clusters)
-    if data is None:
-        clusters = m.fit(data)
-    else:
-        clusters = m.fit(data)
-    score = silhouette_score(data, clusters)
-
-    return score
-
-
-def silhouette(data, model=AgglomerativeClustering):
-    clusters: range = range(1, 11)
-    scores = []
-
-    for k in clusters:
-        scores.append((k, get_silhouette_score(data, n_clusters=1, model=model)))
-
-    scores.sort(key=lambda i: i[1], reverse=True)
-
-    return scores
+    plt.scatter(df['x'], df['y'], c=df['cluster'], cmap='copper')
+    plt.title = n_clusters_str + " | " + clustering_method_str + '\n' + silhouette_score_str
+    plt.show()
 
 
 class wum:
-    needsRandomState = [KMeans, SpectralClustering]
-
     """
     Initiates instance of word usage matrix.
 
@@ -158,31 +119,77 @@ class wum:
 
         return abs(var_coefficient_1 - var_coefficient_2)
 
-    def wsd_cluster(self, num_candidates=1, model=AgglomerativeClustering, plot=False, plotDim=2, pcaFirst=True):
-        pcaData, pcaPrecision = pca(self.u, n_components=plotDim, asDF=False)
+    def get_pca(self, n_components=2):
+        m = PCA(n_components=n_components)
+        return m.fit_transform(self.u)
 
-        data = pcaData if pcaFirst else self.u
+    def silhouette_analysis(self, n_candidates=3, pcaDim=2):
+        # define possible clustering methods
+        methods = [KMeans, SpectralClustering, AgglomerativeClustering]
+        # define random state for consistency
+        random_state = 10
+        # initiate pca for WUM for the sake of memory lol
+        wum_pca = self.get_pca(n_components=pcaDim)
+        bestScores = []
 
-        scores = silhouette(data, model=model)
+        # for i in possible clusters 2-10:
+        for i in range(2, 11):
+            kmeans = KMeans(n_clusters=i, random_state=random_state).fit(wum_pca)
+            kmeans_labels = kmeans.labels_
 
-        candidates = {}
+            spectral = SpectralClustering(n_clusters=i, random_state=random_state).fit(wum_pca)
+            spectral_labels = spectral.labels_
 
-        for candidate, score in enumerate(scores[:num_candidates]):
-            if candidate in wum.needsRandomState:
-                m = model(n_clusters=candidate, random_state=10)
+            agglomerative = AgglomerativeClustering(n_clusters=i).fit(wum_pca)
+            agglomerative_labels = agglomerative.labels_
+
+            labels = [kmeans_labels, spectral_labels, agglomerative_labels]
+            scores = [(methods[i], silhouette_score(wum_pca, labels[i], random_state=10)) for i in range(3)]
+            scores.sort(key=lambda i: i[1], reverse=True)
+            bestScore = scores[0]
+            # append   candidate   score    model
+            bestScores.append((i, bestScore[0], bestScore[1]))
+
+        # sort scores by score in descending order
+        bestScores.sort(key=lambda i: i[2], reverse=True)
+
+        return bestScores[:n_candidates], wum_pca
+
+    def autoCluster(self, n_candidates: int, randomState=None, plot=False):
+        needsRandomState = [KMeans, SpectralClustering]
+        # doesNotNeedRandomState = [AgglomerativeClustering]
+        rState = 10 if randomState is None else randomState
+
+        candidates, pca = self.silhouette_analysis(n_candidates=n_candidates)
+        candidatesData = []
+
+        # candidate is structured (n_clusters, clustering_method, score)
+        for candidate in candidates:
+            # if candidate clustering method requires a random state:
+            clusteringMethod = candidate[1]
+            if clusteringMethod in needsRandomState:
+                model = clusteringMethod(n_clusters=candidate[0], random_state=rState).fit(pca)
             else:
-                m = model(n_clusters=candidate)
-            clusters = m.fit(data)
-            labels = clusters.labels_
-            df = pd.DataFrame({'cwe_pca': pcaData, 'cluster': labels})
-            candidates[candidate] = {'score': score,
-                                     'df': df}
+                model = clusteringMethod(n_clusters=candidate[0]).fit(pca)
 
+            df = pd.DataFrame({'x': [i[0] for i in pca],
+                               'y': [i[1] for i in pca],
+                               'cluster': list(model.labels_)})
+
+            candidateData = {'n_clusters': candidate[0],
+                             'clustering_method': candidate[1].__name__,
+                             'silhouette_score': candidate[2],
+                             'df': df}
+
+            candidatesData.append(candidateData)
+
+        # sort the candidates!
+        if n_candidates > 1:
+            candidatesData.sort(key=lambda i : i['silhouette_score'], reverse=True)
+
+        # plot if needed
         if plot:
-            for d in candidates.values():
-                if plotDim == 2 or plotDim == 3:
-                    plot_wsd_cluster(d, plotDim=plotDim)
-                else:
-                    print('invalid plot dimension')
+            for candData in candidatesData:
+                plot_wsd_cluster(candData)
 
-        return candidates, pcaPrecision
+        return candidatesData
