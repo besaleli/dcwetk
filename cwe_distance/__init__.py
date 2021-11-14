@@ -1,8 +1,67 @@
 from scipy.spatial import distance
 import numpy as np
+from sklearn.cluster import KMeans, AgglomerativeClustering, SpectralClustering
+from sklearn.metrics import silhouette_score
+from sklearn.decomposition import PCA
+import pandas as pd
+import matplotlib.pyplot as plt
+
+
+def plot_wsd_cluster(candidate, plotDim=2):
+    df = candidate['df']
+    pcaEmbeddings = df['cwe_pca']
+    varNames = ['x', 'y', 'z']
+    data = {varNames[i]: list(map(lambda j: j[i], pcaEmbeddings)) for i in range(plotDim)}
+
+    if plotDim == 2:
+        plt.scatter(data['x'], data['y'], c=df['cluster'], cmap='viridis')
+    elif plotDim == 3:
+        fig = plt.figure()
+        ax = fig.add_subplot(projection='3d')
+        ax.scatter(data['x'], data['y'], data['z'], c=df['cluster'], cmap='viridis')
+
+
+def pca(data, n_components=2, extra_columns=None, asDF=True):
+    model = PCA(n_components=n_components)
+    principalComponents = model.fit_transform(data)
+
+    if asDF:
+        if extra_columns is None:
+            extra_columns = []
+        principalDF = pd.DataFrame(data=principalComponents, columns=['pc1', 'pc2'])
+        principleDF_with_extra_cols = pd.concat([principalDF] + [extra_columns], axis=1)
+
+        return principleDF_with_extra_cols, model.get_precision()
+    else:
+        return principalComponents, model.get_precision()
+
+
+def get_silhouette_score(data, n_clusters=1, model=AgglomerativeClustering):
+    m = model(n_clusters=n_clusters)
+    if data is None:
+        clusters = m.fit(data)
+    else:
+        clusters = m.fit(data)
+    score = silhouette_score(data, clusters)
+
+    return score
+
+
+def silhouette(data, model=AgglomerativeClustering):
+    clusters: range = range(1, 11)
+    scores = []
+
+    for k in clusters:
+        scores.append((k, get_silhouette_score(data, n_clusters=1, model=model)))
+
+    scores.sort(key=lambda i: i[1], reverse=True)
+
+    return scores
 
 
 class wum:
+    needsRandomState = [KMeans, SpectralClustering]
+
     """
     Initiates instance of word usage matrix.
 
@@ -96,3 +155,32 @@ class wum:
         var_coefficient_2 = np.sum(dists_from_p2) / other_wum.get_wum().size
 
         return abs(var_coefficient_1 - var_coefficient_2)
+
+    def wsd_cluster(self, num_candidates=1, model=AgglomerativeClustering, plot=False, plotDim=2, pcaFirst=True):
+        pcaData, pcaPrecision = pca(self.u, n_components=plotDim, asDF=False)
+
+        data = pcaData if pcaFirst else self.u
+
+        scores = silhouette(data, model=model)
+
+        candidates = {}
+
+        for candidate, score in enumerate(scores[:num_candidates]):
+            if candidate in wum.needsRandomState:
+                m = model(n_clusters=candidate, random_state=10)
+            else:
+                m = model(n_clusters=candidate)
+            clusters = m.fit(data)
+            labels = clusters.labels_
+            df = pd.DataFrame({'cwe_pca': pcaData, 'cluster': labels})
+            candidates[candidate] = {'score': score,
+                                     'df': df}
+
+        if plot:
+            for d in candidates.values():
+                if plotDim == 2 or plotDim == 3:
+                    plot_wsd_cluster(d, plotDim=plotDim)
+                else:
+                    print('invalid plot dimension')
+
+        return candidates, pcaPrecision
