@@ -10,6 +10,22 @@ import gc
 
 
 def plot_wsd_cluster(candidate, tokens):
+    """
+    Plots a cluster from a candidate dictionary
+
+    Designed for internal use only
+
+    Parameters
+    ----------
+    candidate : dict
+        Candidate info
+    tokens : list
+        Token(s) represented by word usage matrix cluster
+
+    Returns
+    -------
+
+    """
 
     df = candidate['df']
     # make plt title information
@@ -160,16 +176,33 @@ class wum:
         Parameters
         ----------
         n_components : int
+            number of components of desired PCA result
 
 
         Returns
         -------
+        np.array
+            PCA'd word usage matrix
 
         """
         m = PCA(n_components=n_components)
         return m.fit_transform(self.u)
 
     def silhouette_analysis(self, n_candidates=3, pcaDim=2):
+        """
+
+        Parameters
+        ----------
+        n_candidates : int
+            specifies top n scorers
+        pcaDim : int
+            How many dimensions to reduce the word usage matrix to using principal component analysis
+
+        Returns
+        -------
+            N candidates with top silhouette scores
+
+        """
         # define possible clustering methods
         methods = [KMeans, SpectralClustering, AgglomerativeClustering]
         # define random state for consistency
@@ -202,6 +235,23 @@ class wum:
         return bestScores[:n_candidates], wum_pca
 
     def autoCluster(self, n_candidates: int, randomState=None, plot=False):
+        """
+
+        Parameters
+        ----------
+        n_candidates : int
+            How many clusters to perform according to the silhouette analysis
+        randomState : int
+            Specify a random state for consistency
+        plot : bool
+            True if plotting the clusters is desired
+
+        Returns
+        -------
+        list
+            List of dictionaries containing candidate data (structure specified in src code)
+
+        """
         needsRandomState = [KMeans, SpectralClustering]
         # doesNotNeedRandomState = [AgglomerativeClustering]
         rState = 10 if randomState is None else randomState
@@ -252,6 +302,18 @@ class wum:
 
 class wumGen:
     def __init__(self, df, verbose=False):
+        """
+        __init__ function for wumGen class
+
+        Constructs and stores word usage matrices of singular words given a Pandas DataFrame
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            Pandas DataFrame containing 2 columns: 'tokens' and 'embeddings'
+        verbose : bool
+            Provides status updates on construction of word usage matrices via tqdm package if True
+        """
         verboseCond = lambda i: tqdm(i) if verbose else i
         self.embeddings = df['embeddings'].to_list()
         self.tokens = df['tokens'].to_list()
@@ -264,20 +326,74 @@ class wumGen:
         self.prototypes = {tok: self.WUMs[tok].prototype() for tok in verboseCond(self.vocab)}
 
     def getTokens(self):
+        """
+        Accessor for tokens data member
+
+        Returns
+        -------
+        list
+            tokens for embeddings contained by word usage matrix in self.WUMs of key 'token'
+        """
+
         return self.tokens
 
     def getSize(self):
+        """
+        Accessor for size data member
+
+        Returns
+        -------
+        int
+            Number of WUMs in object (equal to number of unique tokens in the df argument of the constructor)
+        """
+
         return self.size
 
     def getWUMs(self):
+        """
+        Accessor for WUMs data member
+
+        Returns
+        -------
+        dict
+            WUMs with given their representative token as their key
+        """
+
         return self.WUMs
 
     def getPrototypes(self):
+        """
+        Accessor for prototypes data member
+
+        Returns
+        -------
+        dict
+            dictionary of prototypes with their keys being their representative tokens
+
+        """
         return self.prototypes
 
     def getWordUsageMatrix_Individual(self, token):
+        """
+        Accessor for an individual word usage matrix stored in self.WUMs data member
+
+        Parameters
+        ----------
+        token : str
+            A given token
+
+        Returns
+        -------
+        wum
+            word usage matrix of given token
+        """
+
         embeddings = self.embeddings
 
         vecs = [embeddings[i] for i in range(len(embeddings)) if self.tokens[i] == token]
 
-        return wum(np.array(vecs), [token] * len(self.tokens))
+        try:
+            return wum(np.array(vecs), [token] * len(self.tokens))
+
+        except KeyError:
+            print('word usage matrix of given token not found in object!')
