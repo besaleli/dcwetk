@@ -10,122 +10,141 @@ import gc
 
 
 def plot_wsd_cluster(candidate, tokens):
-    """
-    {'n_clusters': candidate[0],
-                             'clustering_method': candidate[1].__name__,
-                             'silhouetteScore': candidate[2],
-                             'df': df}
-    """
+
     df = candidate['df']
+    # make plt title information
     n_clusters_str = '# Clusters: ' + str(candidate['n_clusters'])
     clustering_method_str = 'Clustering Method: ' + candidate['clustering_method']
     silhouette_score_str = 'Silhouette Score: ' + str(np.round(candidate['silhouette_score'], decimals=4))
 
+    # make the plt plot
     plt.scatter(df['x'], df['y'], c=df['cluster'], cmap='copper')
     plt.title(' '.join(tokens) + '\n' + n_clusters_str + " | " + clustering_method_str + " | " + silhouette_score_str)
     plt.show()
 
 
 class wum:
-    """
-    Initiates instance of word usage matrix.
+    def __init__(self, u, token: str):
+        """
+        __init__ function for wum
 
-    Stored in a np array.
-
-    Parameters
-    __________
-    u : arr-like object
-        List of contextualized word embeddings
-    """
-
-    def __init__(self, u, token):
+        Parameters
+        ----------
+        u : np.array
+            list of word vectors in np arrays
+        token : list
+            token that word usage matrix represents
+        """
         # copy constructor
         if type(u) == wum:
             self.u = np.array([vec for vec in u.getWUM()])
             self.tokens = [t for t in u.getTokens()]
 
-        # default constructor
+        # default constructor - for WUMs representing single token
         else:
             # ensure everything is in np arrays so that it goes *fast*
             self.u = np.array([np.array(vec) for vec in u])
-            self.tokens = []
-            for i in range(len(self.u)):
-                self.tokens.append(token)
+            self.tokens = [token] # list so tokens can be added together if WUM represents multiple tokens
 
+    # need to fix this
     def __add__(self, other):
         u = self.u + other.getWUM()
         tokens = self.tokens + other.getTokens()
 
         return wum(u, tokens)
 
-    """
-    Accessor fn for self.u
-    
-    Returns
-    -------
-    np.arr
-        word usage matrix
-    """
-
     def getWUM(self):
+        """
+
+        Returns
+        -------
+        np.array
+            word usage matrix
+        """
         return self.u
 
     def getTokens(self):
+        """
+
+        Returns
+        -------
+        list
+            token(s) (list of str) that np array represents
+        """
         return self.tokens
 
-    """
-    Returns prototype of wum object
-    
-    The prototype of a word-usage-matrix is the average (vector) of all of the word usage matrix's constituent
-    contextualized word embeddings.
-    
-    Returns
-    -------
-    np.array
-        prototype of self.u
-    """
-
     def prototype(self):
+        """
+            Returns prototype of wum object
+
+            The prototype of a word-usage-matrix is the average (vector) of all of the word usage matrix's constituent
+            contextualized word embeddings.
+
+            Returns
+            -------
+            np.array
+                prototype of self.u
+            """
+
         prototype = np.sum(self.u) / self.u.size
 
         return prototype
 
-    """
-    Calculates inverted cosine similarity over word prototypes of the wum object and another wum object
-    
-    Parameters
-    ----------
-    other_wum : wum
-        another word usage matrix from another time period in a wum object
-    
-    Returns
-    -------
-        Inverted cosine similarity over word prototypes of this and other wum objects
-    """
-
     def prt(self, other_wum):
+        """
+            Calculates inverted cosine similarity over word prototypes of the wum object and another wum object
+
+            Parameters
+            ----------
+            other_wum : wum
+                another word usage matrix from another time period in a wum object
+
+            Returns
+            -------
+                Inverted cosine similarity over word prototypes of this and other wum objects
+        """
+
         p1, p2 = self.prototype(), other_wum.prototype()
         return 1 / distance.cosine(p1, p2)
 
-    """
-    Calculates average pairwise cosine distance between token embeddings of the wum object, given another wum object
-    """
-
+    # TODO
     def apd(self):
+        """
+        Calculates average pairwise cosine distance between token embeddings of the wum object, given another wum object
+
+        Returns
+        -------
+
+        """
         pass
 
-    """
-    Calculates Jensen-Shannon Divergence between embedding clusters of the wum object and another wum object
-    """
-
+    # TODO
     def jsd(self):
-        pass
+        """
+        Calculates Jensen-Shannon Divergence between embedding clusters of the wum object and another wum objects
 
-    """
-    Calculates difference between token embedding diversities of wum object and another wum object
-    """
+        Returns
+        -------
+
+        """
+        pass
 
     def div(self, other_wum):
+        """
+        Calculates difference between token embedding diversities of wum object and another wum object
+
+        Parameters
+        ----------
+        other_wum : wum
+            other wum
+
+        Returns
+        -------
+        float
+            DIV
+
+        """
+
         p1, p2 = self.prototype(), other_wum.prototype()
         dists_from_p1 = np.array([distance.cosine(vec, p1) for vec in self.u])
         dists_from_p2 = np.array([distance.cosine(vec, p2) for vec in other_wum.getWUM()])
@@ -135,6 +154,18 @@ class wum:
         return abs(var_coefficient_1 - var_coefficient_2)
 
     def get_pca(self, n_components=2):
+        """
+        Performs principal component analysis of word usage matrix given number of components [dimensionality reduction]
+
+        Parameters
+        ----------
+        n_components : int
+
+
+        Returns
+        -------
+
+        """
         m = PCA(n_components=n_components)
         return m.fit_transform(self.u)
 
@@ -206,7 +237,15 @@ class wum:
         # plot if needed
         if plot:
             for candData in candidatesData:
-                plot_wsd_cluster(candData, [self.tokens[0][0]])  # why does it do this?
+                plot_wsd_cluster(candData, [self.tokens])  # why does it do this?
+
+        """
+        Each candidate in candidatesData is a dict with the following structure:
+        {'n_clusters': candidate[0],
+        'clustering_method': candidate[1].__name__,
+        'silhouetteScore': candidate[2],
+        'df': df}
+        """
 
         return candidatesData
 
