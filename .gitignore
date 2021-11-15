@@ -1,6 +1,10 @@
+# any jupyter notebooks
+*.ipynb
+
+# pycharm bullshit
 .idea/
 .DS_store
-testfile.ipynb
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
