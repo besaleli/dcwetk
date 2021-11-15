@@ -214,7 +214,7 @@ class wum:
 class wumGen:
     def __init__(self, df, verbose=False):
         verboseCond = lambda i: tqdm(i) if verbose else i
-
+        self.embeddings = df['embeddings'].to_list()
         self.tokens = df['tokens'].to_list()
         if verbose: print('getting vocab info...')
         self.size = len(self.tokens)
@@ -237,7 +237,7 @@ class wumGen:
         return self.prototypes
 
     def getWordUsageMatrix_Individual(self, token):
-        embeddings = self.df['embeddings'].to_list()
+        embeddings = self.embeddings.to_list()
 
         vecs = [embeddings[i] for i in range(len(embeddings)) if self.tokens[i] == token]
 
