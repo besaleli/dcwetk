@@ -316,7 +316,7 @@ class wum:
 
         """
         # lambda function for jsonFriendly conditional
-        jsonCond = lambda i: i.to_list() if jsonFriendly else i
+        jsonCond = lambda i: i.tolist() if jsonFriendly else i
 
         # initialize empty dict
         data = dict()
@@ -468,10 +468,10 @@ class wumGen:
         data['vocab'] = list(self.vocab)
 
         # self.embeddings is a list of np.arrays which need to be converted to list
-        data['embeddings'] = list(map(lambda i: i.to_list(), self.embeddings))
+        data['embeddings'] = list(map(lambda i: i.tolist(), self.embeddings))
 
         # self.prototypes is dictionary of np arrays which need to be JSONified (keys are str so it's ok)
-        data['prototypes'] = {tok: prototype.to_list() for tok, prototype in self.prototypes.items()}
+        data['prototypes'] = {tok: prototype.tolist() for tok, prototype in self.prototypes.items()}
 
         # self.WUMs is dictionary of word usage matrices whose proprietary class needs to be JSONified (keys are str
         # so it's ok
