@@ -343,7 +343,12 @@ class wumGen:
             Provides status updates on construction of word usage matrices via tqdm package if True
         """
 
-        if df == pd.DataFrame:
+        # dictionary constructor
+        if type(df) == dict:
+            pass
+
+        # default constructor with pd DataFrame
+        else:
             verboseCond = lambda i: tqdm(i) if verbose else i
 
         self.embeddings = df['embeddings'].to_list()
