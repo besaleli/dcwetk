@@ -5,9 +5,11 @@ from sklearn.metrics import silhouette_score
 from sklearn.decomposition import PCA
 import pandas as pd
 import matplotlib.pyplot as plt
+from tqdm.auto import tqdm
+import gc
 
 
-def plot_wsd_cluster(candidate):
+def plot_wsd_cluster(candidate, tokens):
     """
     {'n_clusters': candidate[0],
                              'clustering_method': candidate[1].__name__,
@@ -20,7 +22,7 @@ def plot_wsd_cluster(candidate):
     silhouette_score_str = 'Silhouette Score: ' + str(np.round(candidate['silhouette_score'], decimals=4))
 
     plt.scatter(df['x'], df['y'], c=df['cluster'], cmap='copper')
-    plt.title = n_clusters_str + " | " + clustering_method_str + '\n' + silhouette_score_str
+    plt.title(' '.join(tokens) + '\n' + n_clusters_str + " | " + clustering_method_str + " | " + silhouette_score_str)
     plt.show()
 
 
@@ -36,15 +38,25 @@ class wum:
         List of contextualized word embeddings
     """
 
-    def __init__(self, u):
+    def __init__(self, u, token):
         # copy constructor
         if type(u) == wum:
-            self.u = np.array([vec for vec in u.get_wum()])
+            self.u = np.array([vec for vec in u.getWUM()])
+            self.tokens = [t for t in u.getTokens()]
 
         # default constructor
         else:
             # ensure everything is in np arrays so that it goes *fast*
             self.u = np.array([np.array(vec) for vec in u])
+            self.tokens = []
+            for i in range(len(self.u)):
+                self.tokens.append(token)
+
+    def __add__(self, other):
+        u = self.u + other.getWUM()
+        tokens = self.tokens + other.getTokens()
+
+        return wum(u, tokens)
 
     """
     Accessor fn for self.u
@@ -55,8 +67,11 @@ class wum:
         word usage matrix
     """
 
-    def get_wum(self):
+    def getWUM(self):
         return self.u
+
+    def getTokens(self):
+        return self.tokens
 
     """
     Returns prototype of wum object
@@ -113,9 +128,9 @@ class wum:
     def div(self, other_wum):
         p1, p2 = self.prototype(), other_wum.prototype()
         dists_from_p1 = np.array([distance.cosine(vec, p1) for vec in self.u])
-        dists_from_p2 = np.array([distance.cosine(vec, p2) for vec in other_wum.get_wum()])
+        dists_from_p2 = np.array([distance.cosine(vec, p2) for vec in other_wum.getWUM()])
         var_coefficient_1 = np.sum(dists_from_p1) / self.u.size
-        var_coefficient_2 = np.sum(dists_from_p2) / other_wum.get_wum().size
+        var_coefficient_2 = np.sum(dists_from_p2) / other_wum.getWUM().size
 
         return abs(var_coefficient_1 - var_coefficient_2)
 
@@ -132,7 +147,7 @@ class wum:
         wum_pca = self.get_pca(n_components=pcaDim)
         bestScores = []
 
-        # for i in possible clusters 2-10:
+        # for i in possible clusters 1-10:
         for i in range(2, 11):
             kmeans = KMeans(n_clusters=i, random_state=random_state).fit(wum_pca)
             kmeans_labels = kmeans.labels_
@@ -145,13 +160,13 @@ class wum:
 
             labels = [kmeans_labels, spectral_labels, agglomerative_labels]
             scores = [(methods[i], silhouette_score(wum_pca, labels[i], random_state=10)) for i in range(3)]
-            scores.sort(key=lambda i: i[1], reverse=True)
+            scores.sort(key=lambda j: j[1], reverse=True)
             bestScore = scores[0]
             # append   candidate   score    model
             bestScores.append((i, bestScore[0], bestScore[1]))
 
         # sort scores by score in descending order
-        bestScores.sort(key=lambda i: i[2], reverse=True)
+        bestScores.sort(key=lambda k: k[2], reverse=True)
 
         return bestScores[:n_candidates], wum_pca
 
@@ -172,7 +187,8 @@ class wum:
             else:
                 model = clusteringMethod(n_clusters=candidate[0]).fit(pca)
 
-            df = pd.DataFrame({'x': [i[0] for i in pca],
+            df = pd.DataFrame({'words': self.tokens,
+                               'x': [i[0] for i in pca],
                                'y': [i[1] for i in pca],
                                'cluster': list(model.labels_)})
 
@@ -185,11 +201,46 @@ class wum:
 
         # sort the candidates!
         if n_candidates > 1:
-            candidatesData.sort(key=lambda i : i['silhouette_score'], reverse=True)
+            candidatesData.sort(key=lambda i: i['silhouette_score'], reverse=True)
 
         # plot if needed
         if plot:
             for candData in candidatesData:
-                plot_wsd_cluster(candData)
+                plot_wsd_cluster(candData, [self.tokens[0][0]]) # why does it do this?
 
         return candidatesData
+
+
+class wumGen:
+    def __init__(self, df):
+        self.df = df
+        self.tokens = df['tokens'].to_list()
+        print('getting vocab info...')
+        self.size = len(self.tokens)
+        self.vocab = set(self.tokens)
+        print('constructing individual word usage matrices...')
+        self.WUMs = {tok: self.getWordUsageMatrix_Individual(tok) for tok in tqdm(self.vocab)}
+        print('calculating word usage matrix prototypes...')
+        self.prototypes = {tok: self.WUMs[tok].prototype() for tok in tqdm(self.vocab)}
+
+    def getDF(self):
+        return self.df
+
+    def getTokens(self):
+        return self.tokens
+
+    def getSize(self):
+        return self.size
+
+    def getWUMs(self):
+        return self.WUMs
+
+    def getPrototypes(self):
+        return self.prototypes
+
+    def getWordUsageMatrix_Individual(self, token):
+        embeddings = self.df['embeddings'].to_list()
+
+        vecs = [embeddings[i] for i in range(len(embeddings)) if self.tokens[i] == token]
+
+        return wum(np.array(vecs), [token] * len(self.tokens))
