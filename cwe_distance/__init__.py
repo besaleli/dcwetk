@@ -213,7 +213,6 @@ class wum:
 
 class wumGen:
     def __init__(self, df):
-        self.df = df
         self.tokens = df['tokens'].to_list()
         print('getting vocab info...')
         self.size = len(self.tokens)
@@ -222,9 +221,6 @@ class wumGen:
         self.WUMs = {tok: self.getWordUsageMatrix_Individual(tok) for tok in tqdm(self.vocab)}
         print('calculating word usage matrix prototypes...')
         self.prototypes = {tok: self.WUMs[tok].prototype() for tok in tqdm(self.vocab)}
-
-    def getDF(self):
-        return self.df
 
     def getTokens(self):
         return self.tokens
