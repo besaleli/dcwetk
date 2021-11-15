@@ -237,7 +237,7 @@ class wumGen:
         return self.prototypes
 
     def getWordUsageMatrix_Individual(self, token):
-        embeddings = self.embeddings.to_list()
+        embeddings = self.embeddings
 
         vecs = [embeddings[i] for i in range(len(embeddings)) if self.tokens[i] == token]
 
