@@ -61,7 +61,7 @@ class wum:
         else:
             # ensure everything is in np arrays so that it goes *fast*
             self.u = np.array([np.array(vec) for vec in u])
-            self.tokens = [token] # list so tokens can be added together if WUM represents multiple tokens
+            self.tokens = [token]  # list so tokens can be added together if WUM represents multiple tokens
 
     # need to fix this
     def __add__(self, other):
@@ -301,8 +301,22 @@ class wum:
         return candidatesData
 
     def asDict(self, jsonFriendly=True):
+        """
+        Returns wum object as dictionary
+
+        Parameters
+        ----------
+        jsonFriendly : bool
+            True if JSON-serializable objects are necessary
+
+        Returns
+        -------
+        dict
+            wum data stored as dictionary
+
+        """
         # lambda function for jsonFriendly conditional
-        jsonCond = lambda i : i.to_list() if jsonFriendly else i
+        jsonCond = lambda i: i.to_list() if jsonFriendly else i
 
         # initialize empty dict
         data = dict()
@@ -312,8 +326,6 @@ class wum:
         data['tokens'] = self.tokens
 
         return data
-
-
 
 
 class wumGen:
@@ -486,9 +498,3 @@ class wumGen:
 
         else:
             return dataString
-
-
-
-
-
-
