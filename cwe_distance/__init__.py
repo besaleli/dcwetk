@@ -206,21 +206,23 @@ class wum:
         # plot if needed
         if plot:
             for candData in candidatesData:
-                plot_wsd_cluster(candData, [self.tokens[0][0]]) # why does it do this?
+                plot_wsd_cluster(candData, [self.tokens[0][0]])  # why does it do this?
 
         return candidatesData
 
 
 class wumGen:
-    def __init__(self, df):
+    def __init__(self, df, verbose=False):
+        verboseCond = lambda i: tqdm(i) if verbose else i
+
         self.tokens = df['tokens'].to_list()
-        print('getting vocab info...')
+        if verbose: print('getting vocab info...')
         self.size = len(self.tokens)
         self.vocab = set(self.tokens)
-        print('constructing individual word usage matrices...')
-        self.WUMs = {tok: self.getWordUsageMatrix_Individual(tok) for tok in tqdm(self.vocab)}
-        print('calculating word usage matrix prototypes...')
-        self.prototypes = {tok: self.WUMs[tok].prototype() for tok in tqdm(self.vocab)}
+        if verbose: print('constructing individual word usage matrices...')
+        self.WUMs = {tok: self.getWordUsageMatrix_Individual(tok) for tok in verboseCond(self.vocab)}
+        if verbose: print('calculating word usage matrix prototypes...')
+        self.prototypes = {tok: self.WUMs[tok].prototype() for tok in verboseCond(self.vocab)}
 
     def getTokens(self):
         return self.tokens
