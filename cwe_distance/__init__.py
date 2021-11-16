@@ -437,15 +437,16 @@ class wumGen:
         except KeyError:
             print('word usage matrix of given token not found in object!')
 
-    def to_json(self, fileName=None, fileDir=None, saveJSON=False):
+    def to_json(self, fileName=None, fileDir=None, saveJSON=False, returnJSONStr=False):
         """
         Writes wumGen obj to JSON
 
         Parameters
         ----------
-        fileName
+        returnJSONStr
+        fileName : str
             name of file to write JSON to
-        fileDir
+        fileDir : str
             directory of desired file (leave empty if you want it in the directory of your code)
         saveJSON : bool
             Returns JSON formatted string if True
@@ -498,8 +499,6 @@ class wumGen:
                     f.write(dataString)
                     f.close()
             else:
-                print('no file specified!! Returning instead')
-                return dataString
+                print('no file specified!!')
 
-        else:
-            return dataString
+        if returnJSONStr: return dataString

@@ -12,7 +12,7 @@ def embed_text():
     df, msg = alephBert.embed(data['tokens'])
     print(msg)
     print(df)
-    return df.to_json()
+    return df.to_json(returnJSONStr=bool)
 
 
 if __name__ == '__main__':
