@@ -322,7 +322,7 @@ class wum:
         data = dict()
 
         # add data members to dict
-        data['u'] = [jsonCond(vec) for vec in self.u]
+        data['u'] = [jsonCond(vec) for vec in wum]
         data['tokens'] = self.tokens
 
         return data
