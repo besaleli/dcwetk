@@ -329,7 +329,7 @@ class wum:
 
 
 class wumGen:
-    def __init__(self, df, verbose=False):
+    def __init__(self, df, verbose=False, minOccs=10):
         """
         __init__ function for wumGen class
 
@@ -359,7 +359,7 @@ class wumGen:
         self.vocab = set(self.tokens)
 
         if verbose: print('constructing individual word usage matrices...')
-        self.WUMs = {tok: self.getWordUsageMatrix_Individual(tok) for tok in verboseCond(self.vocab)}
+        self.WUMs = {tok: self.getWordUsageMatrix_Individual(tok) for tok in verboseCond(self.vocab) if self.tokens.count(tok) >= minOccs}
 
         if verbose: print('calculating word usage matrix prototypes...')
         self.prototypes = {tok: self.WUMs[tok].prototype() for tok in verboseCond(self.vocab)}
@@ -436,69 +436,3 @@ class wumGen:
 
         except KeyError:
             print('word usage matrix of given token not found in object!')
-
-    def to_json(self, fileName=None, fileDir=None, saveJSON=False, returnJSONStr=False):
-        """
-        Writes wumGen obj to JSON
-
-        Parameters
-        ----------
-        returnJSONStr
-        fileName : str
-            name of file to write JSON to
-        fileDir : str
-            directory of desired file (leave empty if you want it in the directory of your code)
-        saveJSON : bool
-            Returns JSON formatted string if True
-
-        Returns
-        -------
-            str
-                JSON-formatted string (if returnJSON == True)
-
-        """
-
-        # initialize empty dictionary
-        data = dict()
-
-        # self.tokens & self.size are already primitives so no transformation needed
-        data['tokens'] = self.tokens
-        data['size'] = self.size
-
-        # self.vocab is non serializable so it needs to be cast as a list
-        data['vocab'] = list(self.vocab)
-
-        # self.embeddings is a list of np.arrays which need to be converted to list
-        data['embeddings'] = list(map(lambda i: i.tolist(), self.embeddings))
-
-        # self.prototypes is dictionary of np arrays which need to be JSONified (keys are str so it's ok)
-        data['prototypes'] = {tok: prototype.tolist() for tok, prototype in self.prototypes.items()}
-
-        # self.WUMs is dictionary of word usage matrices whose proprietary class needs to be JSONified (keys are str
-        # so it's ok
-        data['WUMs'] = {tok: w.asDict(jsonFriendly=True) for tok, w in self.WUMs.items()}
-
-        # dump file
-        dataString = json.dumps(data, ensure_ascii=False, indent=4)
-
-        # memory management
-        del data
-        gc.collect()
-
-        # save json if necessary
-        if saveJSON:
-            if fileName:
-                # ensure file dir is valid
-                if fileDir:
-                    d = fileDir + fileName if fileDir[-1] == '/' else fileDir + '/' + fileName
-                else:
-                    d = fileName
-
-                # dump JSON to file
-                with open(d, 'w', encoding='utf-8') as f:
-                    f.write(dataString)
-                    f.close()
-            else:
-                print('no file specified!!')
-
-        if returnJSONStr: return dataString
