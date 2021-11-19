@@ -55,7 +55,7 @@ class score:
 
 
 class wum:
-    def __init__(self, u, token: str):
+    def __init__(self, u, token=None, pcaFirst=False, n_components=2, random_state=10):
         """
         __init__ function for wum
 
@@ -66,16 +66,28 @@ class wum:
         token : list
             token that word usage matrix represents
         """
+
+        if token is None:
+            token = list()
+
         # copy constructor
         if type(u) == wum:
             self.u = np.array([vec for vec in u.getWUM()])
             self.tokens = [t for t in u.getTokens()]
+            self.prototype = u.getPrototype()
 
         # default constructor - for WUMs representing single token
         else:
-            # ensure everything is in np arrays so that it goes *fast*
-            self.u = np.array([np.array(vec) for vec in u])
+            if pcaFirst:
+                pca = PCA(n_components=n_components, random_state=random_state)
+                self.u = pca.fit_transform(u)
+            else:
+                self.u = u
+
             self.tokens = token  # list so tokens can be added together if WUM represents multiple tokens
+            self.prototype = np.sum(u) / u.size
+            self.pcaFirst = pcaFirst
+            self.random_state = random_state
 
     # need to fix this
     def __add__(self, other):
@@ -107,22 +119,20 @@ class wum:
         """
         return self.tokens
 
-    def prototype(self):
+    def getPrototype(self):
         """
-            Returns prototype of wum object
+        Returns prototype of wum object
 
-            The prototype of a word-usage-matrix is the average (vector) of all of the word usage matrix's constituent
-            contextualized word embeddings.
+        The prototype of a word-usage-matrix is the average (vector) of all of the word usage matrix's constituent
+        contextualized word embeddings.
 
-            Returns
-            -------
-            np.array
-                prototype of self.u
-            """
+        Returns
+        -------
+        np.array
+            prototype of self.u
+        """
 
-        prototype = np.sum(self.u) / self.u.size
-
-        return prototype
+        return self.prototype
 
     def prt(self, other_wum):
         """
@@ -138,7 +148,7 @@ class wum:
                 Inverted cosine similarity over word prototypes of this and other wum objects
         """
 
-        p1, p2 = self.prototype(), other_wum.prototype()
+        p1, p2 = self.getPrototype(), other_wum.getPrototype()
         return 1 / distance.cosine(p1, p2)
 
     # TODO
@@ -179,7 +189,7 @@ class wum:
 
         """
 
-        p1, p2 = self.prototype(), other_wum.prototype()
+        p1, p2 = self.getPrototype(), other_wum.getPrototype()
         dists_from_p1 = np.array([distance.cosine(vec, p1) for vec in self.u])
         dists_from_p2 = np.array([distance.cosine(vec, p2) for vec in other_wum.getWUM()])
         var_coefficient_1 = np.sum(dists_from_p1) / self.u.size
@@ -203,8 +213,8 @@ class wum:
             PCA'd word usage matrix
 
         """
-        m = PCA(n_components=n_components)
-        return m.fit_transform(self.u)
+        m = PCA(n_components=n_components, random_state=self.random_state)
+        return self.u if self.pcaFirst else m.fit_transform(self.u)
 
     def silhouette_analysis(self, n_candidates=3, pcaDim=2):
         """
@@ -228,7 +238,7 @@ class wum:
         # define random state for consistency
         random_state = 10
         # initiate pca for WUM for the sake of memory lol
-        wum_pca = self.get_pca(n_components=pcaDim)
+        wum_pca = self.u if self.pcaFirst else self.get_pca(n_components=pcaDim)
         bestScores = []
 
         if len(wum_pca) == 1:
@@ -294,7 +304,7 @@ class wum:
         """
         needsRandomState = [KMeans, SpectralClustering, KMedoids]
         # doesNotNeedRandomState = [AgglomerativeClustering]
-        rState = 10 if random_state is None else random_state
+        rState = 10 if random_state is None else self.random_state
 
         candidates, pca = self.silhouette_analysis(n_candidates=n_candidates)
         candidatesData = []
@@ -366,7 +376,7 @@ class wum:
 
 
 class wumGen:
-    def __init__(self, df, verbose=False):
+    def __init__(self, df, verbose=False, minOccs=1, pcaFirst=False, n_components=2, random_state=10):
         """
         __init__ function for wumGen class
 
@@ -392,15 +402,28 @@ class wumGen:
             self.embeddings = df['embeddings'].to_list()
             self.tokens = df['tokens'].to_list()
 
+            self.pcaFirst = pcaFirst
+            self.n_components = n_components
+            self.random_state = random_state
+
             verboseCond(print('getting vocab info...'))
             self.size = len(self.tokens)
             self.vocab = set(self.tokens)
 
             verboseCond(print('constructing individual word usage matrices...'))
-            self.WUMs = {tok: self.getWordUsageMatrix_Individual(tok) for tok in tqdm_cond(self.vocab)}
+            try:
+                self.WUMs = {tok: self.getWordUsageMatrix_Individual(tok) for tok in tqdm_cond(self.vocab)
+                             if self.tokens.count(tok) >= minOccs}
+            except ValueError:
+                print('Hapax legomena need to be removed from this corpus before PCA can be applied.' +
+                      '\nSetting pcaFirst to False...')
+                self.pcaFirst = False
+                self.WUMs = {tok: self.getWordUsageMatrix_Individual(tok) for tok in tqdm_cond(self.vocab)
+                             if self.tokens.count(tok) >= minOccs}
 
             verboseCond(print('calculating word usage matrix prototypes...'))
-            self.prototypes = {tok: self.WUMs[tok].prototype() for tok in tqdm_cond(self.vocab)}
+            self.prototypes = {tok: self.WUMs[tok].getPrototype() for tok in tqdm_cond(self.vocab)
+                               if self.tokens.count(tok) >= minOccs}
 
     def getTokens(self):
         """
@@ -468,12 +491,13 @@ class wumGen:
         vecs = [self.embeddings[i] for i in range(len(self.embeddings)) if self.tokens[i] == token]
 
         try:
-            return wum(np.array(vecs), [token] * len(vecs))
+            return wum(np.array(vecs), [token] * len(vecs), pcaFirst=self.pcaFirst, n_components=self.n_components,
+                       random_state=self.random_state)
 
         except KeyError:
             print('word usage matrix of given token not found in object!: ' + token)
 
-    def autoCluster_analysis(self, n_candidates=1, random_state=10, plot=False, formatText=None,
+    def autoCluster_analysis(self, n_candidates=1, plot=False, formatText=None,
                              minWUMLength=2, verbose=False):
         tqdm_cond = lambda i: tqdm(i) if verbose else i
         print_cond = lambda i: print(i) if verbose else i
@@ -500,7 +524,7 @@ class wumGen:
         print_cond('Clustering...')
         for t, w in tqdm_cond(WUMs_over_threshold.items()):
             try:
-                data[t] = w.autoCluster(n_candidates, random_state=random_state, plot=plot, formatText=formatText)
+                data[t] = w.autoCluster(n_candidates, plot=plot, formatText=formatText)
 
             except SilhouetteError:
                 print(SilhouetteError)
