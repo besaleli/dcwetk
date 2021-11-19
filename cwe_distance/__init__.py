@@ -6,9 +6,14 @@ from sklearn.decomposition import PCA
 import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
+import warnings
+
+
 # import json
 # import gc
 
+class SilhouetteError(Exception):
+    pass
 
 def plot_wsd_cluster(candidate: dict, tokens: set):
     """
@@ -215,31 +220,41 @@ class wum:
         wum_pca = self.get_pca(n_components=pcaDim)
         bestScores = []
 
-        # you're not going to be able to get a silhouette score on a # of clusters that exceeds the length of self.u
-        r = range(2, 11) if len(self.u) > 10 else range(2, len(self.u) - 1)
+        if len(wum_pca) == 1:
+            raise SilhouetteError("You're not going to want to try this with a word usage matrix with only 1 "
+                                  "embedding in it.")
 
-        # for i in possible clusters 1-10 (or number of embeddings in the word usage matrix if less than 10):
-        for i in r:
-            kmeans = KMeans(n_clusters=i, random_state=random_state).fit(wum_pca)
-            kmeans_labels = kmeans.labels_
+        else:
+            # you're not going to be able to get a silhouette score on a # of clusters that exceeds the length of self.u
+            if len(wum_pca) >= 10:
+                r = range(2, 11)
+            else:
+                r = range(2, len(wum_pca) - 1)
+                warnings.warn("Caution: you're doing a silhouette analysis on a word usage matrix with fewer than 10 "
+                              "embeddings.")
 
-            spectral = SpectralClustering(n_clusters=i, random_state=random_state).fit(wum_pca)
-            spectral_labels = spectral.labels_
+            # for i in possible clusters 1-10 (or number of embeddings in the word usage matrix if less than 10):
+            for i in r:
+                kmeans = KMeans(n_clusters=i, random_state=random_state).fit(wum_pca)
+                kmeans_labels = kmeans.labels_
 
-            agglomerative = AgglomerativeClustering(n_clusters=i).fit(wum_pca)
-            agglomerative_labels = agglomerative.labels_
+                spectral = SpectralClustering(n_clusters=i, random_state=random_state).fit(wum_pca)
+                spectral_labels = spectral.labels_
 
-            labels = [kmeans_labels, spectral_labels, agglomerative_labels]
-            scores = [(methods[i], silhouette_score(wum_pca, labels[i], random_state=10)) for i in range(len(methods))]
-            scores.sort(key=lambda j: j[1], reverse=True)
-            bestScore = scores[0]
-            # append   candidate   score    model
-            bestScores.append((i, bestScore[0], bestScore[1]))
+                agglomerative = AgglomerativeClustering(n_clusters=i).fit(wum_pca)
+                agglomerative_labels = agglomerative.labels_
 
-        # sort scores by score in descending order
-        bestScores.sort(key=lambda k: k[2], reverse=True)
+                labels = [kmeans_labels, spectral_labels, agglomerative_labels]
+                scores = [(methods[i], silhouette_score(wum_pca, labels[i], random_state=10)) for i in range(len(methods))]
+                scores.sort(key=lambda j: j[1], reverse=True)
+                bestScore = scores[0]
+                # append   candidate   score    model
+                bestScores.append((i, bestScore[0], bestScore[1]))
 
-        return bestScores[:n_candidates], wum_pca
+            # sort scores by score in descending order
+            bestScores.sort(key=lambda k: k[2], reverse=True)
+
+            return bestScores[:n_candidates], wum_pca
 
     def autoCluster(self, n_candidates: int, randomState=None, plot=False):
         """
@@ -335,7 +350,7 @@ class wum:
 
 
 class wumGen:
-    def __init__(self, df, verbose=False, minOccs=10):
+    def __init__(self, df, verbose=False):
         """
         __init__ function for wumGen class
 
@@ -366,12 +381,10 @@ class wumGen:
             self.vocab = set(self.tokens)
 
             verboseCond(print('constructing individual word usage matrices...'))
-            self.WUMs = {tok: self.getWordUsageMatrix_Individual(tok) for tok in tqdm_cond(self.vocab)
-                         if self.tokens.count(tok) >= minOccs}
+            self.WUMs = {tok: self.getWordUsageMatrix_Individual(tok) for tok in tqdm_cond(self.vocab)}
 
             verboseCond(print('calculating word usage matrix prototypes...'))
-            self.prototypes = {tok: self.WUMs[tok].prototype() for tok in tqdm_cond(self.vocab)
-                               if self.tokens.count(tok) >= minOccs}
+            self.prototypes = {tok: self.WUMs[tok].prototype() for tok in tqdm_cond(self.vocab)}
 
     def getTokens(self):
         """
