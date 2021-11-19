@@ -1,10 +1,10 @@
 import pickle
-import numpy as np
-from cwe_distance import wum, wumGen
+# import numpy as np
+from cwe_distance import wumGen
 import pandas as pd
 from tqdm import tqdm
-from nltk.probability import FreqDist
-from sklearn.decomposition import PCA
+# from nltk.probability import FreqDist
+# from sklearn.decomposition import PCA
 
 fileName = 'byp_1872.pickle'
 with open(fileName, 'rb') as f:
