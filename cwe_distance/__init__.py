@@ -269,10 +269,6 @@ class wum:
             else:
                 model = clusteringMethod(n_clusters=candidate[0]).fit(pca)
 
-            print(len(self.tokens))
-            print(len(pca))
-            print(len(list(model.labels_)))
-
             df = pd.DataFrame({'words': self.tokens,
                                'x': [i[0] for i in pca],
                                'y': [i[1] for i in pca],
