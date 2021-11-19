@@ -1,6 +1,7 @@
 from scipy.spatial import distance
 import numpy as np
 from sklearn.cluster import KMeans, AgglomerativeClustering, SpectralClustering
+from sklearn_extra.cluster import KMedoids
 from sklearn.metrics import silhouette_score
 from sklearn.decomposition import PCA
 import pandas as pd
@@ -8,48 +9,49 @@ import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
 import warnings
 
-warnings.filterwarnings("ignore")
-
 
 # import json
 # import gc
+
 
 # Silhouette Error won't work on a WUM with length 1
 class SilhouetteError(Exception):
     pass
 
 
-def plot_wsd_cluster(candidate: dict, tokens: set):
-    """
-    Plots a cluster from a candidate dictionary
+class score:
+    def __init__(self, n_clusters: int, clustering_method, silhouetteScore: float, df, tokens: set):
+        self.n_clusters = n_clusters
+        self.clustering_method = clustering_method
+        self.silhouetteScore = silhouetteScore
+        self.df = df
+        self.tokens = tokens
 
-    Designed for internal use only
+    def __str__(self):
+        info = ['Number of clusters: ' + str(self.n_clusters),
+                'Clustering method: ' + self.clustering_method.__name__,
+                'Silhouette Score: ' + str(self.silhouetteScore),
+                'Number of tokens: ' + str(len(self.tokens))]
 
-    Parameters
-    ----------
-    candidate : dict
-        Candidate info
-    tokens : set
-        Token(s) represented by word usage matrix cluster
+        return '\n'.join(info)
 
-    Returns
-    -------
+    def plot(self, formatText=None):
+        # make plt title information
+        n_clusters_str = '# Clusters: ' + str(self.n_clusters)
+        clustering_method_str = 'Clustering Method: ' + self.clustering_method.__name__
+        silhouette_score_str = 'Silhouette Score: ' + str(np.round(self.silhouetteScore, decimals=4))
+        wumSize = '# embeddings: ' + str(len(self.df))
 
-    """
+        pads = {'[CLS]', '[SEP]'}
+        padsInTokens = pads.intersection(self.tokens)
 
-    df = candidate['df']
-    # make plt title information
-    n_clusters_str = '# Clusters: ' + str(candidate['n_clusters'])
-    clustering_method_str = 'Clustering Method: ' + candidate['clustering_method']
-    silhouette_score_str = 'Silhouette Score: ' + str(np.round(candidate['silhouette_score'], decimals=4))
-    wumSize = '# embeddings: ' + str(len(df))
-
-    # make the plt plot
-    plt.suptitle(', '.join(tokens))
-    plt.scatter(df['x'], df['y'], c=df['cluster'], cmap='copper')
-    plt.title(n_clusters_str + " | " + clustering_method_str + " | " + silhouette_score_str + '\n' + wumSize,
-              fontdict={'fontsize': 10})
-    plt.show()
+        # make the plt plot
+        right_to_left = lambda i: i[::-1] if (formatText == 'right_to_left' and not padsInTokens) else i
+        plt.suptitle(right_to_left(', '.join(self.tokens)), size=10)
+        plt.scatter(self.df['x'], self.df['y'], c=self.df['cluster'], cmap='copper')
+        plt.title('\n' + n_clusters_str + " | " + clustering_method_str + " | " + silhouette_score_str + '\n' + wumSize,
+                  fontdict={'fontsize': 9})
+        plt.show()
 
 
 class wum:
@@ -219,8 +221,10 @@ class wum:
             N candidates with top silhouette scores
 
         """
+        warnings.filterwarnings("ignore")
+
         # define possible clustering methods
-        methods = [KMeans, SpectralClustering, AgglomerativeClustering]
+        methods = [KMeans, SpectralClustering, AgglomerativeClustering, KMedoids]
         # define random state for consistency
         random_state = 10
         # initiate pca for WUM for the sake of memory lol
@@ -249,7 +253,10 @@ class wum:
                 agglomerative = AgglomerativeClustering(n_clusters=i).fit(wum_pca)
                 agglomerative_labels = agglomerative.labels_
 
-                labels = [kmeans_labels, spectral_labels, agglomerative_labels]
+                kmedoids = KMedoids(n_clusters=i, random_state=random_state).fit(wum_pca)
+                kmedoids_labels = kmedoids.labels_
+
+                labels = [kmeans_labels, spectral_labels, agglomerative_labels, kmedoids_labels]
 
                 # throwing this into a lambda function so it doesn't have to wrap lol
                 getScore = lambda j: (methods[j], silhouette_score(wum_pca, labels[j], random_state=10))
@@ -265,7 +272,7 @@ class wum:
 
             return bestScores[:n_candidates], wum_pca
 
-    def autoCluster(self, n_candidates: int, random_state=None, plot=False):
+    def autoCluster(self, n_candidates: int, random_state=None, plot=False, formatText=None):
         """
 
         Parameters
@@ -276,6 +283,8 @@ class wum:
             Specify a random state for consistency
         plot : bool
             True if plotting the clusters is desired
+        formatText : str
+            Formats right-to-left if 'right_to_left'
 
         Returns
         -------
@@ -283,7 +292,7 @@ class wum:
             List of dictionaries containing candidate data (structure specified in src code)
 
         """
-        needsRandomState = [KMeans, SpectralClustering]
+        needsRandomState = [KMeans, SpectralClustering, KMedoids]
         # doesNotNeedRandomState = [AgglomerativeClustering]
         rState = 10 if random_state is None else random_state
 
@@ -304,21 +313,19 @@ class wum:
                                'y': [i[1] for i in pca],
                                'cluster': list(model.labels_)})
 
-            candidateData = {'n_clusters': candidate[0],
-                             'clustering_method': candidate[1].__name__,
-                             'silhouette_score': candidate[2],
-                             'df': df}
+            candidateData = score(n_clusters=candidate[0], clustering_method=candidate[1], silhouetteScore=candidate[2],
+                                  df=df, tokens=set(self.tokens))
 
             candidatesData.append(candidateData)
 
         # sort the candidates!
         if n_candidates > 1:
-            candidatesData.sort(key=lambda i: i['silhouette_score'], reverse=True)
+            candidatesData.sort(key=lambda i: i.silhouetteScore, reverse=True)
 
         # plot if needed
         if plot:
             for candData in candidatesData:
-                plot_wsd_cluster(candData, set(self.tokens))  # why does it do this?
+                candData.plot(formatText=formatText)
 
         """
         Each candidate in candidatesData is a dict with the following structure:
@@ -466,8 +473,10 @@ class wumGen:
         except KeyError:
             print('word usage matrix of given token not found in object!: ' + token)
 
-    def autoCluster_analysis(self, n_candidates=1, random_state=10, plot=False, minWUMLength=2, verbose=False):
+    def autoCluster_analysis(self, n_candidates=1, random_state=10, plot=False, formatText=None,
+                             minWUMLength=2, verbose=False):
         tqdm_cond = lambda i: tqdm(i) if verbose else i
+        print_cond = lambda i: print(i) if verbose else i
 
         """
         This performs an autoCluster analysis on all of the WUMs stored in the wumGen object
@@ -485,11 +494,14 @@ class wumGen:
         """
         data = {}
 
-        for t, w in tqdm_cond(self.WUMs.items()):
-            if len(w) >= minWUMLength:
-                try:
-                    data[t] = w.autoCluster(n_candidates, random_state=random_state, plot=plot)
+        print_cond('Filtering word usage matrices...')
+        WUMs_over_threshold = {t: w for t, w in self.WUMs.items() if len(w) >= minWUMLength}
 
-                except SilhouetteError:
-                    print(SilhouetteError)
-                    print('Token(s) that had the issue: ' + w.getTokens())
+        print_cond('Clustering...')
+        for t, w in tqdm_cond(WUMs_over_threshold.items()):
+            try:
+                data[t] = w.autoCluster(n_candidates, random_state=random_state, plot=plot, formatText=formatText)
+
+            except SilhouetteError:
+                print(SilhouetteError)
+                print('Token(s) that had the issue: ' + w.getTokens())
