@@ -19,6 +19,7 @@ class SilhouetteError(Exception):
     pass
 
 
+# TODO: documentation
 class score:
     def __init__(self, n_clusters: int, clustering_method, silhouetteScore: float, df, tokens: set):
         self.n_clusters = n_clusters
@@ -425,6 +426,9 @@ class wumGen:
             self.prototypes = {tok: self.WUMs[tok].getPrototype() for tok in tqdm_cond(self.vocab)
                                if self.tokens.count(tok) >= minOccs}
 
+    def __len__(self):
+        return self.size
+
     def getTokens(self):
         """
         Accessor for tokens data member
@@ -497,6 +501,7 @@ class wumGen:
         except KeyError:
             print('word usage matrix of given token not found in object!: ' + token)
 
+    # TODO: documentation
     def autoCluster_analysis(self, n_candidates=1, plot=False, formatText=None,
                              minWUMLength=2, verbose=False):
         tqdm_cond = lambda i: tqdm(i) if verbose else i
