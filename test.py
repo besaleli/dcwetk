@@ -4,26 +4,18 @@ from cwe_distance import wum, wumGen
 import pandas as pd
 from tqdm import tqdm
 from nltk.probability import FreqDist
+from sklearn.decomposition import PCA
 
-fileName = 'byp_1879.pickle'
+fileName = 'byp_1872.pickle'
 with open(fileName, 'rb') as f:
     byp = pickle.load(f)
 
 dfs = [byp['docs'][i]['embeddings'] for i in tqdm(range(len(byp['docs'])))]
 df = pd.concat(dfs)
-wums = wumGen(df)
+# embeddings = df['embeddings'].to_list()
+# embeddings_pca = PCA(n_components=2).fit_transform(embeddings)
+# print(embeddings_pca[0])
+wums = wumGen(df, verbose=True)
 tokens = wums.getTokens()
-
-fdist = FreqDist(tokens)
-over50Occs = {}
-significantWUMs = {}
-print('finding significant word usage matrices...')
-for token, freq in tqdm(fdist.items()):
-    if freq >= 100:
-        print(token, freq)
-        significantWUMs[token] = wums.getWUMs()[token]
-
-print(str(len(significantWUMs.items())) + ' significant word usage matrices found.')
-
-for token, matrix in tqdm(significantWUMs.items()):
-    matrix.autoCluster(1, randomState=None, plot=True)
+israel = wums.getWordUsageMatrix_Individual('ב')
+israel.autoCluster(n_candidates=2, plot=True)

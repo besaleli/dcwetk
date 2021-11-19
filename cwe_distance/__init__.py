@@ -6,8 +6,8 @@ from sklearn.decomposition import PCA
 import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
-import json
-import gc
+# import json
+# import gc
 
 
 def plot_wsd_cluster(candidate, tokens):
@@ -36,7 +36,7 @@ def plot_wsd_cluster(candidate, tokens):
 
     # make the plt plot
     plt.scatter(df['x'], df['y'], c=df['cluster'], cmap='copper')
-    plt.title(' '.join(tokens) + '\n' + n_clusters_str + " | " + clustering_method_str + " | " + silhouette_score_str)
+    plt.title(', '.join(tokens) + '\n' + n_clusters_str + " | " + clustering_method_str + " | " + silhouette_score_str)
     plt.show()
 
 
@@ -61,7 +61,7 @@ class wum:
         else:
             # ensure everything is in np arrays so that it goes *fast*
             self.u = np.array([np.array(vec) for vec in u])
-            self.tokens = [token]  # list so tokens can be added together if WUM represents multiple tokens
+            self.tokens = token  # list so tokens can be added together if WUM represents multiple tokens
 
     # need to fix this
     def __add__(self, other):
@@ -269,6 +269,10 @@ class wum:
             else:
                 model = clusteringMethod(n_clusters=candidate[0]).fit(pca)
 
+            print(len(self.tokens))
+            print(len(pca))
+            print(len(list(model.labels_)))
+
             df = pd.DataFrame({'words': self.tokens,
                                'x': [i[0] for i in pca],
                                'y': [i[1] for i in pca],
@@ -288,7 +292,7 @@ class wum:
         # plot if needed
         if plot:
             for candData in candidatesData:
-                plot_wsd_cluster(candData, [self.tokens])  # why does it do this?
+                plot_wsd_cluster(candData, set(self.tokens))  # why does it do this?
 
         """
         Each candidate in candidatesData is a dict with the following structure:
@@ -322,7 +326,7 @@ class wum:
         data = dict()
 
         # add data members to dict
-        data['u'] = [jsonCond(vec) for vec in wum]
+        data['u'] = [jsonCond(vec) for vec in self.u]
         data['tokens'] = self.tokens
 
         return data
@@ -349,20 +353,23 @@ class wumGen:
 
         # default constructor with pd DataFrame
         else:
-            verboseCond = lambda i: tqdm(i) if verbose else i
+            tqdm_cond = lambda i: tqdm(i) if verbose else i
+            verboseCond = lambda i: print(i) if verbose else i
 
-        self.embeddings = df['embeddings'].to_list()
-        self.tokens = df['tokens'].to_list()
+            self.embeddings = df['embeddings'].to_list()
+            self.tokens = df['tokens'].to_list()
 
-        if verbose: print('getting vocab info...')
-        self.size = len(self.tokens)
-        self.vocab = set(self.tokens)
+            verboseCond(print('getting vocab info...'))
+            self.size = len(self.tokens)
+            self.vocab = set(self.tokens)
 
-        if verbose: print('constructing individual word usage matrices...')
-        self.WUMs = {tok: self.getWordUsageMatrix_Individual(tok) for tok in verboseCond(self.vocab) if self.tokens.count(tok) >= minOccs}
+            verboseCond(print('constructing individual word usage matrices...'))
+            self.WUMs = {tok: self.getWordUsageMatrix_Individual(tok) for tok in tqdm_cond(self.vocab)
+                         if self.tokens.count(tok) >= minOccs}
 
-        if verbose: print('calculating word usage matrix prototypes...')
-        self.prototypes = {tok: self.WUMs[tok].prototype() for tok in verboseCond(self.vocab)}
+            verboseCond(print('calculating word usage matrix prototypes...'))
+            self.prototypes = {tok: self.WUMs[tok].prototype() for tok in tqdm_cond(self.vocab)
+                               if self.tokens.count(tok) >= minOccs}
 
     def getTokens(self):
         """
@@ -427,12 +434,10 @@ class wumGen:
             word usage matrix of given token
         """
 
-        embeddings = self.embeddings
-
-        vecs = [embeddings[i] for i in range(len(embeddings)) if self.tokens[i] == token]
+        vecs = [self.embeddings[i] for i in range(len(self.embeddings)) if self.tokens[i] == token]
 
         try:
-            return wum(np.array(vecs), [token] * len(self.tokens))
+            return wum(np.array(vecs), [token] * len(vecs))
 
         except KeyError:
-            print('word usage matrix of given token not found in object!')
+            print('word usage matrix of given token not found in object!: ' + token)
