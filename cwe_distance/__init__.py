@@ -70,6 +70,9 @@ class wum:
 
         return wum(u, tokens)
 
+    def __len__(self):
+        return len(self.u)
+
     def getWUM(self):
         """
 
@@ -224,7 +227,7 @@ class wum:
             agglomerative_labels = agglomerative.labels_
 
             labels = [kmeans_labels, spectral_labels, agglomerative_labels]
-            scores = [(methods[i], silhouette_score(wum_pca, labels[i], random_state=10)) for i in range(3)]
+            scores = [(methods[i], silhouette_score(wum_pca, labels[i], random_state=10)) for i in range(len(methods))]
             scores.sort(key=lambda j: j[1], reverse=True)
             bestScore = scores[0]
             # append   candidate   score    model
