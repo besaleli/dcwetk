@@ -1,6 +1,12 @@
 # any jupyter notebooks
 *.ipynb
 
+# pickles
+*.pickle
+
+# test.py
+test.py
+
 # pycharm bullshit
 .idea/
 .DS_store
