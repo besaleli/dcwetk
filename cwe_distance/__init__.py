@@ -8,12 +8,16 @@ import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
 import warnings
 
+warnings.filterwarnings("ignore")
+
 
 # import json
 # import gc
 
+# Silhouette Error won't work on a WUM with length 1
 class SilhouetteError(Exception):
     pass
+
 
 def plot_wsd_cluster(candidate: dict, tokens: set):
     """
@@ -38,10 +42,13 @@ def plot_wsd_cluster(candidate: dict, tokens: set):
     n_clusters_str = '# Clusters: ' + str(candidate['n_clusters'])
     clustering_method_str = 'Clustering Method: ' + candidate['clustering_method']
     silhouette_score_str = 'Silhouette Score: ' + str(np.round(candidate['silhouette_score'], decimals=4))
+    wumSize = '# embeddings: ' + str(len(df))
 
     # make the plt plot
+    plt.suptitle(', '.join(tokens))
     plt.scatter(df['x'], df['y'], c=df['cluster'], cmap='copper')
-    plt.title(', '.join(tokens) + '\n' + n_clusters_str + " | " + clustering_method_str + " | " + silhouette_score_str)
+    plt.title(n_clusters_str + " | " + clustering_method_str + " | " + silhouette_score_str + '\n' + wumSize,
+              fontdict={'fontsize': 10})
     plt.show()
 
 
@@ -226,12 +233,10 @@ class wum:
 
         else:
             # you're not going to be able to get a silhouette score on a # of clusters that exceeds the length of self.u
-            if len(wum_pca) >= 10:
+            if len(wum_pca) > 10:
                 r = range(2, 11)
             else:
                 r = range(2, len(wum_pca) - 1)
-                warnings.warn("Caution: you're doing a silhouette analysis on a word usage matrix with fewer than 10 "
-                              "embeddings.")
 
             # for i in possible clusters 1-10 (or number of embeddings in the word usage matrix if less than 10):
             for i in r:
@@ -245,7 +250,11 @@ class wum:
                 agglomerative_labels = agglomerative.labels_
 
                 labels = [kmeans_labels, spectral_labels, agglomerative_labels]
-                scores = [(methods[i], silhouette_score(wum_pca, labels[i], random_state=10)) for i in range(len(methods))]
+
+                # throwing this into a lambda function so it doesn't have to wrap lol
+                getScore = lambda j: (methods[j], silhouette_score(wum_pca, labels[j], random_state=10))
+
+                scores = [getScore(i) for i in range(len(methods))]
                 scores.sort(key=lambda j: j[1], reverse=True)
                 bestScore = scores[0]
                 # append   candidate   score    model
@@ -256,14 +265,14 @@ class wum:
 
             return bestScores[:n_candidates], wum_pca
 
-    def autoCluster(self, n_candidates: int, randomState=None, plot=False):
+    def autoCluster(self, n_candidates: int, random_state=None, plot=False):
         """
 
         Parameters
         ----------
         n_candidates : int
             How many clusters to perform according to the silhouette analysis
-        randomState : int
+        random_state : int
             Specify a random state for consistency
         plot : bool
             True if plotting the clusters is desired
@@ -276,7 +285,7 @@ class wum:
         """
         needsRandomState = [KMeans, SpectralClustering]
         # doesNotNeedRandomState = [AgglomerativeClustering]
-        rState = 10 if randomState is None else randomState
+        rState = 10 if random_state is None else random_state
 
         candidates, pca = self.silhouette_analysis(n_candidates=n_candidates)
         candidatesData = []
@@ -456,3 +465,31 @@ class wumGen:
 
         except KeyError:
             print('word usage matrix of given token not found in object!: ' + token)
+
+    def autoCluster_analysis(self, n_candidates=1, random_state=10, plot=False, minWUMLength=2, verbose=False):
+        tqdm_cond = lambda i: tqdm(i) if verbose else i
+
+        """
+        This performs an autoCluster analysis on all of the WUMs stored in the wumGen object
+
+        :param n_candidates: int
+            Number of candidates per autoCluster
+        :param random_state: int
+            Random state to use
+        :param plot: bool
+            Whether to plot
+        :param minWUMLength: int
+            Minimum number of embeddings in each WUM to perform autoCluster on
+        :return:
+            A dictionary of autoClustered WUMs, with tokens as keys
+        """
+        data = {}
+
+        for t, w in tqdm_cond(self.WUMs.items()):
+            if len(w) >= minWUMLength:
+                try:
+                    data[t] = w.autoCluster(n_candidates, random_state=random_state, plot=plot)
+
+                except SilhouetteError:
+                    print(SilhouetteError)
+                    print('Token(s) that had the issue: ' + w.getTokens())
