@@ -215,8 +215,11 @@ class wum:
         wum_pca = self.get_pca(n_components=pcaDim)
         bestScores = []
 
-        # for i in possible clusters 1-10:
-        for i in range(2, 11):
+        # you're not going to be able to get a silhouette score on a # of clusters that exceeds the length of self.u
+        r = range(2, 11) if len(self.u) > 10 else range(2, len(self.u) - 1)
+
+        # for i in possible clusters 1-10 (or number of embeddings in the word usage matrix if less than 10):
+        for i in r:
             kmeans = KMeans(n_clusters=i, random_state=random_state).fit(wum_pca)
             kmeans_labels = kmeans.labels_
 
