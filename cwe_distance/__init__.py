@@ -10,7 +10,7 @@ from tqdm.auto import tqdm
 # import gc
 
 
-def plot_wsd_cluster(candidate, tokens):
+def plot_wsd_cluster(candidate: dict, tokens: set):
     """
     Plots a cluster from a candidate dictionary
 
@@ -20,7 +20,7 @@ def plot_wsd_cluster(candidate, tokens):
     ----------
     candidate : dict
         Candidate info
-    tokens : list
+    tokens : set
         Token(s) represented by word usage matrix cluster
 
     Returns
