@@ -2,7 +2,7 @@ from scipy.spatial import distance
 import numpy as np
 from sklearn.cluster import KMeans, AgglomerativeClustering, SpectralClustering
 from sklearn_extra.cluster import KMedoids
-from sklearn.metrics import silhouette_score
+from sklearn.metrics import silhouette_score, pairwise
 from sklearn.decomposition import PCA
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -157,22 +157,27 @@ class wum:
         """
         Calculates average pairwise cosine distance between token embeddings of the wum object, given another wum object
 
+        wrapper fn for sklearn.metrics.pairwise.cosine_distances
+
         Returns
         -------
 
         """
         pass
 
-    # TODO
-    def jsd(self):
+    def jsd(self, other_wum):
         """
         Calculates Jensen-Shannon Divergence between embedding clusters of the wum object and another wum objects
 
+        Wrapper class for scipy.spatial.distance.jensenshannon
+
         Returns
         -------
+        float
+            Jensen-Shannon distance between wum and other wum
 
         """
-        pass
+        return distance.jensenshannon(self.u, other_wum.getWUM())
 
     def div(self, other_wum):
         """
