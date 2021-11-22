@@ -8,6 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
 import warnings
+from tabulate import tabulate
 
 
 # import json
@@ -90,15 +91,17 @@ class wum:
             self.pcaFirst = pcaFirst
             self.random_state = random_state
 
-    # need to fix this
     def __add__(self, other):
-        u = self.u + other.getWUM()
+        u = np.concatenate([self.u, other.getWUM()])
         tokens = self.tokens + other.getTokens()
 
         return wum(u, tokens)
 
     def __len__(self):
         return len(self.u)
+
+    def __str__(self):
+        return tabulate(list(zip(self.tokens, self.u)))
 
     def getWUM(self):
         """
