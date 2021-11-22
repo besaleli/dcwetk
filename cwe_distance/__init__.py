@@ -87,7 +87,7 @@ class wum:
                 self.u = u
 
             self.tokens = token  # list so tokens can be added together if WUM represents multiple tokens
-            self.prototype = np.sum(u) / u.size
+            self.prototype = sum(u) / len(u)
             self.pcaFirst = pcaFirst
             self.random_state = random_state
 
@@ -168,6 +168,7 @@ class wum:
         """
         pass
 
+    # broken lol -- gives an error about incompatible np array shapes
     def jsd(self, other_wum):
         """
         Calculates Jensen-Shannon Divergence between embedding clusters of the wum object and another wum objects
