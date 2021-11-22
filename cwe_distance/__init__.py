@@ -2,7 +2,7 @@ from scipy.spatial import distance
 import numpy as np
 from sklearn.cluster import KMeans, AgglomerativeClustering, SpectralClustering
 from sklearn_extra.cluster import KMedoids
-from sklearn.metrics import silhouette_score, pairwise
+from sklearn.metrics import silhouette_score
 from sklearn.decomposition import PCA
 import pandas as pd
 import matplotlib.pyplot as plt
