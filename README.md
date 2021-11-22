@@ -3,7 +3,7 @@ This is a rudimentary diachronic contextual word embedding toolkit I am developi
 <br><br>
 Honestly this is mostly for personal usage and a way to bolster my GitHub with actual code so I have no real plans to deploy it, but adding citations/documentation for funsies anyway lmao
 <br><br> 
-Using Transformers gives me some pretty significant limitations but I'm also planning to convert some of the framework into Go, Julia, or Rust, mostly for practice
+Using Transformers gives me some pretty significant limitations as far as programming languages go but I'm also planning to convert some of the framework into Go, Julia, or Rust, mostly for practice
 
 ## Encoder API
 This is a really simple RESTful API server that provides ELMo-like contextual word embeddings from 🤗 Transformers BERT models on-demand. Runs on localhost by default, port 5000; no batteries included.
