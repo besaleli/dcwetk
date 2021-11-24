@@ -97,6 +97,9 @@ class wum:
 
         return wum(u, tokens)
 
+    def __eq__(self, other):
+        return True if np.array_equal(self.u, other.getWUM()) and self.tokens == other.getTokens() else False
+
     def __len__(self):
         return len(self.u)
 
@@ -292,7 +295,7 @@ class wum:
 
             return bestScores[:n_candidates], wum_pca
 
-    def autoCluster(self, n_candidates: int, random_state=None, plot=False, formatText=None):
+    def autoCluster(self, n_candidates: int = 1, random_state=None, plot=False, formatText=None):
         """
 
         Parameters
@@ -431,10 +434,6 @@ class wumGen:
                 self.WUMs = {tok: self.getWordUsageMatrix_Individual(tok) for tok in tqdm_cond(self.vocab)
                              if self.tokens.count(tok) >= minOccs}
 
-            verboseCond(print('calculating word usage matrix prototypes...'))
-            self.prototypes = {tok: self.WUMs[tok].getPrototype() for tok in tqdm_cond(self.vocab)
-                               if self.tokens.count(tok) >= minOccs}
-
     def __len__(self):
         return self.size
 
@@ -473,18 +472,6 @@ class wumGen:
         """
 
         return self.WUMs
-
-    def getPrototypes(self):
-        """
-        Accessor for prototypes data member
-
-        Returns
-        -------
-        dict
-            dictionary of prototypes with their keys being their representative tokens
-
-        """
-        return self.prototypes
 
     def getWordUsageMatrix_Individual(self, token):
         """
@@ -543,3 +530,13 @@ class wumGen:
             except SilhouetteError:
                 print(SilhouetteError)
                 print('Token(s) that had the issue: ' + w.getTokens())
+
+    # TODO: documentation
+    def findNearestNeighbors(self, w: wum, n_neighbors=1, ignoreTokens=None):
+        prototypical_equivalence = lambda i, j: np.array_equal(i.getPrototype(), j.getPrototype())
+        ignorePads_cond = lambda i: True if ignoreTokens and not set.intersection(set(ignoreTokens), set(i.getTokens())) else False
+        distances = [(u, u.prt(w)) for token, u in self.WUMs.items() if ignorePads_cond(u) and not prototypical_equivalence(u, w)]
+
+        distances.sort(key=lambda i: i[1])
+
+        return distances[:n_neighbors]
