@@ -537,6 +537,7 @@ class wumGen:
         def cond(u):
             # prototypical equivalence
             if not np.array_equal(u.getPrototype(), w.getPrototype()):
+                # if token is not in ignoreTokens list/set/whatever
                 if ignoreTokens and not set.intersection(set(ignoreTokens), set(w.getTokens())):
                     return True
 
