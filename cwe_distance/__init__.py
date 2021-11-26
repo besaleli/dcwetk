@@ -172,7 +172,7 @@ class wum:
         """
         pass
 
-    # broken lol -- gives an error about incompatible np array shapes
+    # TODO: broken lol -- gives an error about incompatible np array shapes
     def jsd(self, other_wum):
         """
         Calculates Jensen-Shannon Divergence between embedding clusters of the wum object and another wum objects
@@ -498,7 +498,6 @@ class wumGen:
         except KeyError:
             print('word usage matrix of given token not found in object!: ' + token)
 
-    # TODO: documentation
     def autoCluster_analysis(self, n_candidates=1, plot=False, formatText=None,
                              minWUMLength=2, verbose=False):
         tqdm_cond = lambda i: tqdm(i) if verbose else i
@@ -532,12 +531,20 @@ class wumGen:
                 print(SilhouetteError)
                 print('Token(s) that had the issue: ' + w.getTokens())
 
-    # TODO: documentation
     def findNearestNeighbors(self, w: wum, n_neighbors=1, ignoreTokens=None):
+        """
+        Finds tokens with nearest WUM prototypes using cosine distance.
+
+        :param w: a given WUM
+        :param n_neighbors: number of desired neighbors
+        :param ignoreTokens: list of tokens to ignore (e.g., [CLS], [SEP], etc.)
+        :return: List of tuples of structure (WUM, cosine distance)
+        """
+
         def cond(u):
             # prototypical equivalence
             if not np.array_equal(u.getPrototype(), w.getPrototype()):
-                # if token is not in ignoreTokens list/set/whatever
+                # if token is not in ignoreTokens list/set/whatever | also w is a global var in master fn
                 if ignoreTokens and not set.intersection(set(ignoreTokens), set(w.getTokens())):
                     return True
 
@@ -556,6 +563,10 @@ class wumGen:
 
         return distances[:n_neighbors]
 
-    # TODO: documentation
     def getFreqDist(self):
+        """
+        Wrapper function for FreqDist. Accessor for on-demand data member
+
+        :return: FreqDist of wumGen object
+        """
         return FreqDist(self.tokens)
