@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
 import warnings
 from tabulate import tabulate
+from nltk.probability import FreqDist
 
 
 # import json
@@ -223,7 +224,7 @@ class wum:
         Returns
         -------
         np.array
-            PCA'd word usage matrix
+            PCA-d word usage matrix
 
         """
         m = PCA(n_components=n_components, random_state=self.random_state)
@@ -533,13 +534,27 @@ class wumGen:
 
     # TODO: documentation
     def findNearestNeighbors(self, w: wum, n_neighbors=1, ignoreTokens=None):
-        # TODO: refactor to stop abusing lambda functions lol
-        prototypical_equivalence = lambda i, j: np.array_equal(i.getPrototype(), j.getPrototype())
-        ignorePads_cond = lambda i: True if ignoreTokens and not set.intersection(set(ignoreTokens), set(i.getTokens())) else False
-        continue_cond = lambda u, v: ignorePads_cond(u) and not prototypical_equivalence(u, v)
+        def cond(u):
+            # prototypical equivalence
+            if not np.array_equal(u.getPrototype(), w.getPrototype()):
+                if ignoreTokens and not set.intersection(set(ignoreTokens), set(w.getTokens())):
+                    return True
 
-        distances = [(u, u.prt(w)) for token, u in self.WUMs.items() if continue_cond(u, w)]
+            else:
+                return False
+
+        # I stopped using these lambda functions because it's an abuse lol prototypical_equivalence = lambda i,
+        # j: np.array_equal(i.getPrototype(), j.getPrototype()) ignorePads_cond = lambda i: True if ignoreTokens and
+        # not set.intersection(set(ignoreTokens), set(i.getTokens())) else False continue_cond = lambda u,
+        # v: ignorePads_cond(u) and not prototypical_equivalence(u, v) distances = [(u, u.prt(w)) for token,
+        # u in self.WUMs.items() if continue_cond(u, w)]
+
+        distances = [(u, u.prt(w)) for token, u in self.WUMs.items() if cond(u)]
 
         distances.sort(key=lambda i: i[1])
 
         return distances[:n_neighbors]
+
+    # TODO: documentation
+    def getFreqDist(self):
+        return FreqDist(self.tokens)
