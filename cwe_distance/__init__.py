@@ -15,13 +15,16 @@ from nltk.probability import FreqDist
 # import json
 # import gc
 
-
+# Exceptions ####################################################
 # Silhouette Error won't work on a WUM with length 1
 class SilhouetteError(Exception):
     pass
 
+
 class pcaError(Exception):
     pass
+##################################################################
+
 
 # TODO: documentation
 class score:
@@ -423,7 +426,7 @@ class wum:
 
     def asDict(self, jsonFriendly=True):
         """
-        Returns wum object as dictionary
+        Returns wum object as dictionary (use __dict__ if not jsonFriendly)
 
         Parameters
         ----------
