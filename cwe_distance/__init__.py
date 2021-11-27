@@ -355,48 +355,29 @@ class wum:
             List of dictionaries containing candidate data (structure specified in src code)
 
         """
-        needsRandomState = [KMeans, SpectralClustering, KMedoids]
+        methods = [KMeans, SpectralClustering, AgglomerativeClustering, KMedoids]
 
         rState = 10 if random_state is None else self.random_state
 
-        candidates, pca = self.auto_silhouette(n_candidates=n_candidates)
         candidatesData = []
 
-        # candidate is structured (n_clusters, clustering_method, score)
-        for candidate in candidates:
-            # if candidate clustering method requires a random state:
-            clusteringMethod = candidate[1]
-            if clusteringMethod in needsRandomState:
-                model = clusteringMethod(n_clusters=candidate[0], random_state=rState).fit(pca)
-            else:
-                model = clusteringMethod(n_clusters=candidate[0]).fit(pca)
+        for method in methods:
+            candidates = self.cluster(n_candidates=n_candidates, clusterMethod=method, random_state=rState, plot=False,
+                                      formatText=formatText)
 
-            df = pd.DataFrame({'words': self.tokens,
-                               'x': [i[0] for i in pca],
-                               'y': [i[1] for i in pca],
-                               'cluster': list(model.labels_)})
-
-            candidateData = score(n_clusters=candidate[0], clustering_method=candidate[1], silhouetteScore=candidate[2],
-                                  df=df, tokens=set(self.tokens))
-
-            candidatesData.append(candidateData)
+            [candidatesData.append(c) for c in candidates]
 
         # sort the candidates!
         if n_candidates > 1:
             candidatesData.sort(key=lambda i: i.silhouetteScore, reverse=True)
 
+        # cut off candidates at n_candidates point:
+        significant_candidates = candidatesData[:n_candidates]
+
         # plot if needed
         if plot:
-            for candData in candidatesData:
+            for candData in significant_candidates:
                 candData.plot(formatText=formatText)
-
-        """
-        Each candidate in candidatesData is a dict with the following structure:
-        {'n_clusters': candidate[0],
-        'clustering_method': candidate[1].__name__,
-        'silhouetteScore': candidate[2],
-        'df': df}
-        """
 
         return candidatesData
 
@@ -435,6 +416,8 @@ class wum:
         if plot:
             for candData in candidatesData:
                 candData.plot(formatText=formatText)
+
+        return candidatesData
 
     def asDict(self, jsonFriendly=True):
         """
@@ -481,7 +464,16 @@ class wumGen:
 
         # dictionary constructor
         if type(df) == dict:
-            pass
+            self.embeddings = df['embeddings']
+            self.tokens = df['tokens']
+
+            self.pcaFirst = df['pcaFirst']
+            self.n_components = df['n_components']
+            self.random_state = df['random_state']
+
+            self.size = df['size']
+            self.vocab = df['vocab']
+            self.WUMs = df['WUMs']
 
         # default constructor with pd DataFrame
         else:
@@ -512,6 +504,9 @@ class wumGen:
 
     def __len__(self):
         return self.size
+
+    def __add__(self, other):
+        pass
 
     def getTokens(self):
         """
