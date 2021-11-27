@@ -20,6 +20,8 @@ from nltk.probability import FreqDist
 class SilhouetteError(Exception):
     pass
 
+class pcaError(Exception):
+    pass
 
 # TODO: documentation
 class score:
@@ -506,7 +508,29 @@ class wumGen:
         return self.size
 
     def __add__(self, other):
-        pass
+        if not (self.pcaFirst == other.pcaFirst and self.n_components == other.n_components):
+            raise pcaError
+        else:
+            new_wumGen_dict = dict()
+            new_wumGen_dict['embeddings'] = self.embeddings + other.embeddings
+            new_wumGen_dict['tokens'] = self.tokens + other.tokens
+
+            new_wumGen_dict['pcaFirst'] = self.pcaFirst
+            new_wumGen_dict['n_components'] = self.n_components
+            new_wumGen_dict['random_state'] = self.random_state
+
+            new_wumGen_dict['size'] = self.size + other.size
+            new_wumGen_dict['vocab'] = set.union(self.vocab, other.vocab)
+
+            otherWUMs = other.WUMs.items()
+            newWUMs = dict()
+
+            for tok, w in self.WUMs.items():
+                newWUMs[tok] = w if tok not in otherWUMs else w + otherWUMs[tok]
+
+            new_wumGen_dict['WUMs'] = newWUMs
+
+        return wumGen(new_wumGen_dict)
 
     def getTokens(self):
         """
