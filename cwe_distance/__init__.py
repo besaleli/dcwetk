@@ -230,7 +230,7 @@ class wum:
         m = PCA(n_components=n_components, random_state=self.random_state)
         return self.u if self.pcaFirst else m.fit_transform(self.u)
 
-    def silhouette_analysis(self, n_candidates=3, pcaDim=2):
+    def auto_silhouette(self, n_candidates=3, pcaDim=2):
         """
 
         Parameters
@@ -296,6 +296,45 @@ class wum:
 
             return bestScores[:n_candidates], wum_pca
 
+    # TODO: documentation
+    def silhouette(self, n_candidates=3, pcaDim=2, clusterMethod=KMeans):
+        # define possible clustering methods
+        needsRandomState = [KMeans, SpectralClustering, KMedoids]
+        # define random state for consistency
+        random_state = 10
+        # initiate pca for WUM for the sake of memory lol
+        wum_pca = self.u if self.pcaFirst else self.get_pca(n_components=pcaDim)
+        bestScores = []
+
+        if len(wum_pca) == 1:
+            raise SilhouetteError("You're not going to want to try this with a word usage matrix with only 1 "
+                                  "embedding in it.")
+
+        else:
+            # you're not going to be able to get a silhouette score on a # of clusters that exceeds the length of self.u
+            if len(wum_pca) > 10:
+                r = range(2, 11)
+            else:
+                r = range(2, len(wum_pca) - 1)
+
+            # for i in possible clusters 1-10 (or number of embeddings in the word usage matrix if less than 10):
+            for i in r:
+                if clusterMethod in needsRandomState:
+                    fit = clusterMethod(n_clusters=i, random_state=random_state).fit(wum_pca)
+                else:
+                    fit = clusterMethod(n_clusters=i).fit(wum_pca)
+
+                labels = fit.labels_
+
+                s = (clusterMethod, silhouette_score(wum_pca, labels, random_state=10))
+                # append   candidate   score    model
+                bestScores.append((i, s[0], s[1]))
+
+            # sort scores by score in descending order
+            bestScores.sort(key=lambda k: k[2], reverse=True)
+
+            return bestScores[:n_candidates], wum_pca
+
     def autoCluster(self, n_candidates: int = 1, random_state=None, plot=False, formatText=None):
         """
 
@@ -317,10 +356,10 @@ class wum:
 
         """
         needsRandomState = [KMeans, SpectralClustering, KMedoids]
-        # doesNotNeedRandomState = [AgglomerativeClustering]
+
         rState = 10 if random_state is None else self.random_state
 
-        candidates, pca = self.silhouette_analysis(n_candidates=n_candidates)
+        candidates, pca = self.auto_silhouette(n_candidates=n_candidates)
         candidatesData = []
 
         # candidate is structured (n_clusters, clustering_method, score)
@@ -360,6 +399,42 @@ class wum:
         """
 
         return candidatesData
+
+    # TODO: documentation
+    def cluster(self, n_candidates: int = 1, clusterMethod=KMeans, random_state=None, plot=False, formatText=None):
+        needsRandomState = [KMeans, SpectralClustering, KMedoids]
+
+        rState = 10 if random_state is None else self.random_state
+
+        candidates, pca = self.silhouette(n_candidates=n_candidates, clusterMethod=clusterMethod)
+        candidatesData = []
+
+        for candidate in candidates:
+            # if candidate clustering method requires a random state:
+            clusteringMethod = candidate[1]
+            if clusteringMethod in needsRandomState:
+                model = clusteringMethod(n_clusters=candidate[0], random_state=rState).fit(pca)
+            else:
+                model = clusteringMethod(n_clusters=candidate[0]).fit(pca)
+
+            df = pd.DataFrame({'words': self.tokens,
+                               'x': [i[0] for i in pca],
+                               'y': [i[1] for i in pca],
+                               'cluster': list(model.labels_)})
+
+            candidateData = score(n_clusters=candidate[0], clustering_method=candidate[1], silhouetteScore=candidate[2],
+                                  df=df, tokens=set(self.tokens))
+
+            candidatesData.append(candidateData)
+
+        # sort the candidates!
+        if n_candidates > 1:
+            candidatesData.sort(key=lambda i: i.silhouetteScore, reverse=True)
+
+        # plot if needed
+        if plot:
+            for candData in candidatesData:
+                candData.plot(formatText=formatText)
 
     def asDict(self, jsonFriendly=True):
         """
