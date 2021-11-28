@@ -1,4 +1,3 @@
-from sklearn.metrics import pairwise as pw
 from scipy.spatial import distance
 import numpy as np
 from sklearn.cluster import KMeans, AgglomerativeClustering, SpectralClustering
@@ -11,6 +10,7 @@ from tqdm.auto import tqdm
 import warnings
 from tabulate import tabulate
 from nltk.probability import FreqDist
+from typing import Union
 
 
 # import json
@@ -480,7 +480,8 @@ class wum:
 
 
 class wumGen:
-    def __init__(self, df, verbose=False, minOccs=1, pcaFirst=False, n_components=2, random_state=10):
+    def __init__(self, df: Union[pd.DataFrame, dict], verbose=False, minOccs=1, pcaFirst=False, n_components=2,
+                 random_state=10):
         """
         __init__ function for wumGen class
 
@@ -488,7 +489,7 @@ class wumGen:
 
         Parameters
         ----------
-        df : pd.DataFrame
+        df : pd.DataFrame or dict
             Pandas DataFrame containing 2 columns: 'tokens' and 'embeddings'
         verbose : bool
             Provides status updates on construction of word usage matrices via tqdm package if True
@@ -647,10 +648,10 @@ class wumGen:
         data = {}
 
         print_cond('Filtering word usage matrices...')
-        WUMs_over_threshold = {t: w for t, w in self.WUMs.items() if len(w) >= minWUMLength}
+        WUMs_over_threshold = ((t, w) for t, w in self.WUMs.items() if len(w) >= minWUMLength)
 
         print_cond('Clustering...')
-        for t, w in tqdm_cond(WUMs_over_threshold.items()):
+        for t, w in tqdm_cond(WUMs_over_threshold):
             try:
                 data[t] = w.autoCluster(n_candidates, plot=plot, formatText=formatText)
 
