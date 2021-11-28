@@ -1,3 +1,4 @@
+from sklearn.metrics import pairwise as pw
 from scipy.spatial import distance
 import numpy as np
 from sklearn.cluster import KMeans, AgglomerativeClustering, SpectralClustering
@@ -45,7 +46,7 @@ class score:
 
         return '\n'.join(info)
 
-    def plot(self, formatText=None, points=None):
+    def plot(self, formatText=None, tokens=None):
         # make plt title information
         n_clusters_str = '# Clusters: ' + str(self.n_clusters)
         clustering_method_str = 'Clustering Method: ' + self.clustering_method.__name__
@@ -58,10 +59,10 @@ class score:
         df_fields = ['words', 'x', 'y', 'cluster']
         filtered_dict = dict()
 
-        if type(points) == list:
+        if type(tokens) == list:
             for field in df_fields:
                 filtered_dict[field] = [self.df[field].to_list()[x] for x in range(len(self.df))
-                                        if self.df['words'][x] in points]
+                                        if self.df['words'][x] in tokens]
 
             df_to_plot = pd.DataFrame(filtered_dict)
 
@@ -121,11 +122,24 @@ class wum:
     def __eq__(self, other):
         return True if np.array_equal(self.u, other.getWUM()) and self.tokens == other.getTokens() else False
 
+    # TODO: test
+    def __gt__(self, other, triangulationPoint=None):
+        tPoint = triangulationPoint if triangulationPoint else np.zeros(len(self.prototype))
+        return pw.cosine_distances(self.prototype, tPoint) > pw.cosine_distances(other.prototype, tPoint)
+
+    # TODO: test
+    def __lt__(self, other, triangulationPoint=None):
+        tPoint = triangulationPoint if triangulationPoint else np.zeros(len(self.prototype))
+        return pw.cosine_distances(self.prototype, tPoint) < pw.cosine_distances(other.prototype, tPoint)
+
     def __len__(self):
         return len(self.u)
 
     def __str__(self):
         return tabulate(list(zip(self.tokens, self.u)))
+
+    def prototypicalEquivalence(self, other):
+        return True if self.prototype == other.prototype else False
 
     def getWUM(self):
         """
