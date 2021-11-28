@@ -122,15 +122,13 @@ class wum:
     def __eq__(self, other):
         return True if np.array_equal(self.u, other.getWUM()) and self.tokens == other.getTokens() else False
 
-    # TODO: test
     def __gt__(self, other, triangulationPoint=None):
         tPoint = triangulationPoint if triangulationPoint else np.zeros(len(self.prototype))
-        return pw.cosine_distances(self.prototype, tPoint) > pw.cosine_distances(other.prototype, tPoint)
+        return distance.cosine(self.prototype, tPoint) > distance.cosine(other.prototype, tPoint)
 
-    # TODO: test
     def __lt__(self, other, triangulationPoint=None):
         tPoint = triangulationPoint if triangulationPoint else np.zeros(len(self.prototype))
-        return pw.cosine_distances(self.prototype, tPoint) < pw.cosine_distances(other.prototype, tPoint)
+        return distance.cosine(self.prototype, tPoint) < distance.cosine(other.prototype, tPoint)
 
     def __len__(self):
         return len(self.u)
