@@ -23,6 +23,8 @@ class SilhouetteError(Exception):
 
 class pcaError(Exception):
     pass
+
+
 ##################################################################
 
 
@@ -43,7 +45,7 @@ class score:
 
         return '\n'.join(info)
 
-    def plot(self, formatText=None):
+    def plot(self, formatText=None, points=None):
         # make plt title information
         n_clusters_str = '# Clusters: ' + str(self.n_clusters)
         clustering_method_str = 'Clustering Method: ' + self.clustering_method.__name__
@@ -53,10 +55,23 @@ class score:
         pads = {'[CLS]', '[SEP]'}
         padsInTokens = pads.intersection(self.tokens)
 
+        df_fields = ['words', 'x', 'y', 'cluster']
+        filtered_dict = dict()
+
+        if type(points) == list:
+            for field in df_fields:
+                filtered_dict[field] = [self.df[field].to_list()[x] for x in range(len(self.df))
+                                        if self.df['words'][x] in points]
+
+            df_to_plot = pd.DataFrame(filtered_dict)
+
+        else:
+            df_to_plot = self.df
+
         # make the plt plot
         right_to_left = lambda i: i[::-1] if (formatText == 'right_to_left' and not padsInTokens) else i
         plt.suptitle(right_to_left(', '.join(self.tokens)), size=10)
-        plt.scatter(self.df['x'], self.df['y'], c=self.df['cluster'], cmap='copper')
+        plt.scatter(df_to_plot['x'], df_to_plot['y'], c=df_to_plot['cluster'], cmap='copper')
         plt.title('\n' + n_clusters_str + " | " + clustering_method_str + " | " + silhouette_score_str + '\n' + wumSize,
                   fontdict={'fontsize': 9})
         plt.show()
