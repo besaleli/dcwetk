@@ -562,6 +562,9 @@ class wumGen:
 
         return wumGen(new_wumGen_dict)
 
+    def __iter__(self):
+        return iter(self.WUMs)
+
     def getTokens(self):
         """
         Accessor for tokens data member
