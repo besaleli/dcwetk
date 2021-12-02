@@ -45,7 +45,7 @@ class score:
 
         return '\n'.join(info)
 
-    def plot(self, formatText=None, tokens=None):
+    def plot(self, formatText=None, tokens=None, save=None):
         # make plt title information
         n_clusters_str = '# Clusters: ' + str(self.n_clusters)
         clustering_method_str = 'Clustering Method: ' + self.clustering_method.__name__
@@ -76,6 +76,10 @@ class score:
         plt.title('\n' + n_clusters_str + " | " + clustering_method_str + " | " + silhouette_score_str + '\n' + wumSize,
                   fontdict={'fontsize': 9})
         plt.show()
+
+        if save is not None:
+            filename = save + '.png'
+            plt.savefig(filename)
 
 
 class wum:
