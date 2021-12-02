@@ -28,7 +28,6 @@ class pcaError(Exception):
 
 ##################################################################
 
-
 # TODO: documentation
 class score:
     def __init__(self, n_clusters: int, clustering_method, silhouetteScore: float, df, tokens: set):
@@ -71,7 +70,8 @@ class score:
 
         # make the plt plot
         right_to_left = lambda i: i[::-1] if (formatText == 'right_to_left' and not padsInTokens) else i
-        plt.suptitle(right_to_left(', '.join(self.tokens)), size=10)
+        tokensTitle = tokens if tokens else self.tokens
+        plt.suptitle(right_to_left(', '.join(tokensTitle)), size=10)
         plt.scatter(df_to_plot['x'], df_to_plot['y'], c=df_to_plot['cluster'], cmap='copper')
         plt.title('\n' + n_clusters_str + " | " + clustering_method_str + " | " + silhouette_score_str + '\n' + wumSize,
                   fontdict={'fontsize': 9})
@@ -192,7 +192,7 @@ class wum:
         return 1 / distance.cosine(p1, p2)
 
     # TODO
-    def apd(self):
+    def apd(self, other_wum):
         """
         Calculates average pairwise cosine distance between token embeddings of the wum object, given another wum object
 
@@ -202,7 +202,7 @@ class wum:
         -------
 
         """
-        pass
+        return 0
 
     # TODO: broken lol -- gives an error about incompatible np array shapes
     def jsd(self, other_wum):
@@ -217,7 +217,7 @@ class wum:
             Jensen-Shannon distance between wum and other wum
 
         """
-        return distance.jensenshannon(self.u, other_wum.getWUM())
+        return 0
 
     def div(self, other_wum):
         """
@@ -367,7 +367,7 @@ class wum:
 
             return bestScores[:n_candidates], wum_pca
 
-    def autoCluster(self, n_candidates: int = 1, random_state=None, plot=False, formatText=None):
+    def autoCluster(self, n_candidates: int = 1, random_state=None, plot=False, formatText=None) -> list[score]:
         """
 
         Parameters
@@ -404,14 +404,14 @@ class wum:
             candidatesData.sort(key=lambda i: i.silhouetteScore, reverse=True)
 
         # cut off candidates at n_candidates point:
-        significant_candidates = candidatesData[:n_candidates]
+        significant_candidates: list = candidatesData[:n_candidates]
 
         # plot if needed
         if plot:
             for candData in significant_candidates:
                 candData.plot(formatText=formatText)
 
-        return candidatesData
+        return significant_candidates
 
     # TODO: documentation
     def cluster(self, n_candidates: int = 1, clusterMethod=KMeans, random_state=None, plot=False, formatText=None):
@@ -626,9 +626,37 @@ class wumGen:
         except KeyError:
             print('word usage matrix of given token not found in object!: ' + token)
 
-    def autoCluster_analysis(self, n_candidates=1, plot=False, formatText=None,
-                             minWUMLength=2, verbose=False):
-        tqdm_cond = lambda i: tqdm(i) if verbose else i
+    def findNearestNeighbors(self, w: wum, n_neighbors=1, ignoreTokens: list[str] = None):
+        """
+        Finds tokens with nearest WUM prototypes using cosine distance.
+
+        :param w: a given WUM
+        :param n_neighbors: number of desired neighbors
+        :param ignoreTokens: list of tokens to ignore (e.g., [CLS], [SEP], etc.)
+        :return: List of tuples of structure (WUM, cosine distance)
+        """
+
+        prototype = lambda i: i.getPrototype() if type(i) == wum else self.WUMs[i].getPrototype()
+
+        def cond(u):
+            # prototypical equivalence
+            if not np.array_equal(prototype(u), prototype(w)):
+                # if token is not in ignoreTokens list/set/whatever | also w is a global var in master fn
+                ignoreTokens_intersection = len(set.intersection(set(ignoreTokens), set(w.getTokens()))) == 0
+                ignoreTokens_qualifier = ignoreTokens and not ignoreTokens_intersection
+                return True if ignoreTokens_qualifier or not ignoreTokens else False
+            else:
+                return False
+
+        distances = ((u, u.prt(w)) for token, u in self.WUMs.items() if cond(u))
+
+        distances = sorted(distances, key=lambda i: i[1])
+
+        return distances[:n_neighbors]
+
+    # TODO: update documentation
+    def autoCluster_analysis(self, n_candidates=1, plot=False, formatText=None, minWUMLength=2, verbose=False):
+        tqdm_cond = lambda i: tqdm(list(i)) if verbose else i
         print_cond = lambda i: print(i) if verbose else i
 
         """
@@ -642,6 +670,10 @@ class wumGen:
             Whether to plot
         :param minWUMLength: int
             Minimum number of embeddings in each WUM to perform autoCluster on
+        :param n_neighbors: int
+            # number of neighbors to cluster with
+        :param plot_with_neighbors: bool
+            Whether to plot with neighbors
         :return:
             A dictionary of autoClustered WUMs, with tokens as keys
         """
@@ -659,42 +691,37 @@ class wumGen:
                 print(SilhouetteError)
                 print('Token(s) that had the issue: ' + w.getTokens())
 
-    def findNearestNeighbors(self, w: wum, n_neighbors=1, ignoreTokens=None):
+        return data
+
+    # TODO: documentation
+    def cluster_analysis(self, clusterMethod=KMeans, n_candidates=1, plot=False,
+                         formatText=None, minWUMLength=2, verbose=False):
+
+        tqdm_cond = lambda i: tqdm(list(i)) if verbose else i
+        print_cond = lambda i: print(i) if verbose else i
+
+        data = {}
+
+        print_cond('Filtering word usage matrices...')
+        WUMs_over_threshold = ((t, w) for t, w in self.WUMs.items() if len(w) >= minWUMLength)
+
+        print_cond('Clustering...')
+        for t, w in tqdm_cond(WUMs_over_threshold):
+            try:
+                data[t] = w.cluster(n_candidates, clusterMethod=clusterMethod,
+                                    plot=plot, formatText=formatText)
+
+            except SilhouetteError:
+                print(SilhouetteError)
+                print('Token(s) that had the issue: ' + w.getTokens())
+
+        return data
+
+    def getFreqDist(self, asDF=False):
         """
-        Finds tokens with nearest WUM prototypes using cosine distance.
-
-        :param w: a given WUM
-        :param n_neighbors: number of desired neighbors
-        :param ignoreTokens: list of tokens to ignore (e.g., [CLS], [SEP], etc.)
-        :return: List of tuples of structure (WUM, cosine distance)
+        Wrapper function for nltk FreqDist
+        :param asDF: If desired format is pd dataframe
+        :return: frequency list of tokens in wumGen
         """
-
-        def cond(u):
-            # prototypical equivalence
-            if not np.array_equal(u.getPrototype(), w.getPrototype()):
-                # if token is not in ignoreTokens list/set/whatever | also w is a global var in master fn
-                if ignoreTokens and not set.intersection(set(ignoreTokens), set(w.getTokens())):
-                    return True
-
-            else:
-                return False
-
-        # I stopped using these lambda functions because it's an abuse lol prototypical_equivalence = lambda i,
-        # j: np.array_equal(i.getPrototype(), j.getPrototype()) ignorePads_cond = lambda i: True if ignoreTokens and
-        # not set.intersection(set(ignoreTokens), set(i.getTokens())) else False continue_cond = lambda u,
-        # v: ignorePads_cond(u) and not prototypical_equivalence(u, v) distances = [(u, u.prt(w)) for token,
-        # u in self.WUMs.items() if continue_cond(u, w)]
-
-        distances = [(u, u.prt(w)) for token, u in self.WUMs.items() if cond(u)]
-
-        distances.sort(key=lambda i: i[1])
-
-        return distances[:n_neighbors]
-
-    def getFreqDist(self):
-        """
-        Wrapper function for FreqDist. Accessor for on-demand data member
-
-        :return: FreqDist of wumGen object
-        """
-        return FreqDist(self.tokens)
+        pdCond = lambda i: i if not asDF else pd.DataFrame(i.items(), columns=['Token', 'Count'])
+        return pdCond(FreqDist(self.tokens))
