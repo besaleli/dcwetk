@@ -45,7 +45,7 @@ class score:
 
         return '\n'.join(info)
 
-    def plot(self, formatText=None, tokens=None, save=None):
+    def plot(self, formatText=None, tokens=None, save=None, axisDims=None):
         # make plt title information
         n_clusters_str = '# Clusters: ' + str(self.n_clusters)
         clustering_method_str = 'Clustering Method: ' + self.clustering_method.__name__
@@ -75,6 +75,8 @@ class score:
         plt.scatter(df_to_plot['x'], df_to_plot['y'], c=df_to_plot['cluster'], cmap='copper')
         plt.title('\n' + n_clusters_str + " | " + clustering_method_str + " | " + silhouette_score_str + '\n' + wumSize,
                   fontdict={'fontsize': 9})
+        if axisDims is not None:
+            plt.axis(axisDims)
         
         if save is not None:
             filename = save + '.png'
