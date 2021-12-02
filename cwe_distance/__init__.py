@@ -75,11 +75,12 @@ class score:
         plt.scatter(df_to_plot['x'], df_to_plot['y'], c=df_to_plot['cluster'], cmap='copper')
         plt.title('\n' + n_clusters_str + " | " + clustering_method_str + " | " + silhouette_score_str + '\n' + wumSize,
                   fontdict={'fontsize': 9})
-        plt.show()
-
+        
         if save is not None:
             filename = save + '.png'
             plt.savefig(filename)
+
+        plt.show()
 
 
 class wum:
@@ -500,7 +501,6 @@ class wum:
             distribution.append(float(clusters.count(cluster)) / size)
 
         return distribution
-
 
 
 class wumGen:
