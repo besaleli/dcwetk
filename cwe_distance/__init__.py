@@ -205,7 +205,7 @@ class wum:
         return 0
 
     # TODO: broken lol -- gives an error about incompatible np array shapes
-    def jsd(self, other_wum):
+    def jsd(self, other_wum, clusterMethod=None):
         """
         Calculates Jensen-Shannon Divergence between embedding clusters of the wum object and another wum objects
 
@@ -217,6 +217,7 @@ class wum:
             Jensen-Shannon distance between wum and other wum
 
         """
+
         return 0
 
     def div(self, other_wum):
@@ -367,7 +368,7 @@ class wum:
 
             return bestScores[:n_candidates], wum_pca
 
-    def autoCluster(self, n_candidates: int = 1, random_state=None, plot=False, formatText=None) -> list[score]:
+    def autoCluster(self, n_candidates: int = 1, random_state=None, plot=False, formatText=None):
         """
 
         Parameters
@@ -417,7 +418,7 @@ class wum:
     def cluster(self, n_candidates: int = 1, clusterMethod=KMeans, random_state=None, plot=False, formatText=None):
         needsRandomState = [KMeans, SpectralClustering, KMedoids]
 
-        rState = 10 if random_state is None else self.random_state
+        rState = self.random_state if random_state is None else random_state
 
         candidates, pca = self.silhouette(n_candidates=n_candidates, clusterMethod=clusterMethod)
         candidatesData = []
@@ -430,7 +431,7 @@ class wum:
             else:
                 model = clusteringMethod(n_clusters=candidate[0]).fit(pca)
 
-            df = pd.DataFrame({'words': self.tokens,
+            df = pd.DataFrame({'token': self.tokens,
                                'x': [i[0] for i in pca],
                                'y': [i[1] for i in pca],
                                'cluster': list(model.labels_)})
@@ -477,6 +478,25 @@ class wum:
         data['tokens'] = self.tokens
 
         return data
+
+    def cluster_distributions(self, clusterMethod=KMeans):
+        if clusterMethod is None:
+            candidate = self.cluster(n_candidates=1)
+        else:
+            # cluster WUM
+            candidate = self.cluster(n_candidates=1, clusterMethod=clusterMethod)[0]
+
+        # get df from cluster analysis
+        candidate_df = candidate.df
+        clusters = candidate_df['cluster'].to_list()
+        size = len(clusters)
+
+        distribution = []
+        for cluster in set(clusters):
+            distribution.append(float(clusters.count(cluster)) / size)
+
+        return distribution
+
 
 
 class wumGen:
@@ -626,7 +646,7 @@ class wumGen:
         except KeyError:
             print('word usage matrix of given token not found in object!: ' + token)
 
-    def findNearestNeighbors(self, w: wum, n_neighbors=1, ignoreTokens: list[str] = None):
+    def findNearestNeighbors(self, w: wum, n_neighbors=1, ignoreTokens: list = None):
         """
         Finds tokens with nearest WUM prototypes using cosine distance.
 
