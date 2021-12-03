@@ -13,9 +13,6 @@ from nltk.probability import FreqDist
 from typing import Union
 
 
-# import json
-# import gc
-
 # Exceptions ####################################################
 # Silhouette Error won't work on a WUM with length 1
 class SilhouetteError(Exception):
@@ -77,7 +74,7 @@ class score:
                   fontdict={'fontsize': 9})
         if axisDims is not None:
             plt.axis(axisDims)
-        
+
         if save is not None:
             filename = save + '.png'
             plt.savefig(filename)
