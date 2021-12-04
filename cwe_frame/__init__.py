@@ -83,7 +83,7 @@ class document:
         return iter(self.sents)
 
     def __str__(self):
-        return '\n'.join(self.sents)
+        return '\n'.join(str(self.sents))
 
     def __getitem__(self, item):
         return self.sents[item]
