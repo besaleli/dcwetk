@@ -132,5 +132,25 @@ class encoder:
             return embeddings, msg
 
         except encoder.SizeError:
-            msg = 'failed to embed text:\n' + ' '.join(tokenized_text)
-            return pd.DataFrame({'tokens': list(), 'embeddings': list()}), msg
+            delims = [':']
+            broken_up_sents = [[]]
+            for i in tokenized_text:
+                broken_up_sents[-1].append(i)
+                if any(delim in i for delim in delims):
+                    broken_up_sents.append([])
+
+            if all(len(sent) < 512 for sent in broken_up_sents):
+                data = {'tokens': [], 'embeddings': []}
+                for sent in broken_up_sents:
+                    tokens, tokens_tensor, segments_tensor = self.preprocess(sent)
+                    embeddings = self.get_bert_embeddings(tokens, tokens_tensor, segments_tensor, asDF=False)
+                    data['tokens'] += embeddings['tokens']
+                    data['embeddings'] += embeddings['embeddings']
+
+                msg = 'successfully embedded text:\n' + ' '.join(sent)
+                return pd.DataFrame(data), msg
+
+            else:
+                msg = 'failed to embed text:\n' + ' '.join(tokenized_text)
+                print(msg)
+                return pd.DataFrame({'tokens': list(), 'embeddings': list()}), msg

@@ -83,7 +83,7 @@ class score:
 
 
 class wum:
-    def __init__(self, u, token=None, pcaFirst=False, n_components=2, random_state=10):
+    def __init__(self, u, addresses=None, token=None, pcaFirst=False, n_components=2, random_state=10):
         """
         __init__ function for wum
 
@@ -98,7 +98,7 @@ class wum:
         if token is None:
             token = list()
 
-        # copy constructor
+        # copy constructor -- needs to be updated
         if type(u) == wum:
             self.u = np.array([vec for vec in u.getWUM()])
             self.tokens = [t for t in u.getTokens()]
@@ -116,6 +116,7 @@ class wum:
             self.prototype = sum(u) / len(u)
             self.pcaFirst = pcaFirst
             self.random_state = random_state
+            self.addresses = addresses if addresses else []
 
     def __add__(self, other):
         u = np.concatenate([self.u, other.getWUM()])
@@ -436,6 +437,7 @@ class wum:
                 model = clusteringMethod(n_clusters=candidate[0]).fit(pca)
 
             df = pd.DataFrame({'token': self.tokens,
+                               'address': self.addresses,
                                'x': [i[0] for i in pca],
                                'y': [i[1] for i in pca],
                                'cluster': list(model.labels_)})
