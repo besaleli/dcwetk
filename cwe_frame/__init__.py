@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.spatial.distance import cosine
 
 
 class lemma:
@@ -23,6 +24,21 @@ class lemma:
     def __str__(self):
         return self.lemma
 
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __gt__(self, other, midpoint=None):
+        m = np.zeros(len(self.embedding)) if midpoint is None else midpoint
+        this_distance = cosine(self.embedding, m)
+        other_distance = cosine(self.embedding, m)
+        return this_distance > other_distance
+
+    def __lt__(self, other, midpoint=None):
+        m = np.zeros(len(self.embedding)) if midpoint is None else midpoint
+        this_distance = cosine(self.embedding, m)
+        other_distance = cosine(self.embedding, m)
+        return this_distance < other_distance
+
 
 class token:
     def __init__(self, tokInfo=None):
@@ -42,6 +58,12 @@ class token:
 
     def __getitem__(self, item):
         return self.lemmas[item]
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __len__(self):
+        return len(self.lemmas)
 
 
 class sentence:
@@ -66,6 +88,12 @@ class sentence:
     def __getitem__(self, item):
         return self.tokens[item]
 
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __len__(self):
+        return len(self.raw_text_tokenized)
+
 
 class document:
     def __init__(self, docInfo=None):
@@ -87,4 +115,10 @@ class document:
 
     def __getitem__(self, item):
         return self.sents[item]
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __len__(self):
+        return len(self.sents)
 
