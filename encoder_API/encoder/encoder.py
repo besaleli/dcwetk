@@ -124,7 +124,7 @@ class encoder:
         Embeddings in a dataframe (`columns= ['tokens', 'embeddings']`)
     """
 
-    def embed(self, tokenized_text):
+    def embed(self, tokenized_text, deliminators=None):
         tokens, tokens_tensor, segments_tensor = self.preprocess(tokenized_text)
         try:
             embeddings = self.get_bert_embeddings(tokens, tokens_tensor, segments_tensor, asDF=True)
@@ -132,7 +132,7 @@ class encoder:
             return embeddings, msg
 
         except encoder.SizeError:
-            delims = [':']
+            delims = [':'] if deliminators is None else deliminators
             broken_up_sents = [[]]
             for i in tokenized_text:
                 broken_up_sents[-1].append(i)
