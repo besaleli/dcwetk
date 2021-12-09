@@ -165,3 +165,6 @@ def make_wumGen_frame(docs, verbose=False, minOccs=1, pcaFirst=False, n_componen
     mWUM = lambda i: make_WUM(i, df['tokens'], df['embeddings'], df['addresses'],
                               pcaFirst, n_components, random_state)
     df['WUMs'] = {tok: mWUM(tok) for tok in tqdmCond(df['vocab']) if df['tokens'].count(tok) >= minOccs}
+
+    return wumGen(df, verbose=False, minOccs=minOccs, pcaFirst=pcaFirst, n_components=n_components,
+                  random_state=random_state)
