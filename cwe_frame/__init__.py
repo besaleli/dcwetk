@@ -1,5 +1,8 @@
 import numpy as np
 from scipy.spatial.distance import cosine
+from cwe_distance import wum, wumGen
+from sklearn.decomposition import PCA
+from tqdm.auto import tqdm
 
 
 class lemma:
@@ -122,3 +125,43 @@ class document:
     def __len__(self):
         return len(self.sents)
 
+
+def make_WUM(tok, tokens, embeddings, addresses, pcaFirst, n_components, random_state):
+    vecs = []
+    adds = []
+    for i in range(len(tokens)):
+        if tok == tokens[i]:
+            vecs.append(embeddings[i])
+            adds.append(addresses[i])
+
+    return wum(np.array(vecs), addresses=adds, token=[tok] * len(vecs), pcaFirst=pcaFirst, n_components=n_components,
+               random_state=random_state)
+
+
+def make_wumGen_frame(docs, verbose=False, minOccs=1, pcaFirst=False, n_components=2, random_state=10):
+    tqdmCond = lambda i: tqdm(i) if verbose else i
+    df = dict()
+    df['pcaFirst'] = pcaFirst
+    df['n_components'] = n_components
+    df['random_state'] = random_state
+
+    df['tokens'] = []
+    embeddings = []
+    addresses = []
+    for doc in docs:
+        for sent in doc:
+            for tok in sent:
+                for lem in tok:
+                    df['tokens'].append(lem.lemma)
+                    df['embeddings'].append(lem.embedding)
+                    address = {'tok_ID': tok.tok_ID,
+                               'sent_ID': sent.sent_ID,
+                               'doc_ID': doc.doc_ID}
+                    addresses.append(address)
+
+    df['embeddings'] = PCA(n_components=n_components).fit_transform(embeddings) if pcaFirst else embeddings
+    df['size'] = len(df['tokens'])
+    df['vocab'] = set(df['tokens'])
+    mWUM = lambda i: make_WUM(i, df['tokens'], df['embeddings'], df['addresses'],
+                              pcaFirst, n_components, random_state)
+    df['WUMs'] = {tok: mWUM(tok) for tok in tqdmCond(df['vocab']) if df['tokens'].count(tok) >= minOccs}

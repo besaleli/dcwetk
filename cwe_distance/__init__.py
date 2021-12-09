@@ -103,6 +103,7 @@ class wum:
             self.u = np.array([vec for vec in u.getWUM()])
             self.tokens = [t for t in u.getTokens()]
             self.prototype = u.getPrototype()
+            self.addresses = u.addresses
 
         # default constructor - for WUMs representing single token
         else:
@@ -551,7 +552,7 @@ class wumGen:
 
             verboseCond(print('constructing individual word usage matrices...'))
             try:
-                self.WUMs = {tok: self.getWordUsageMatrix_Individual(tok) for tok in tqdm_cond(self.vocab)
+                self.WUMs = {tok: self.getWordUsageMatrix_Individual(tok, init=True) for tok in tqdm_cond(self.vocab)
                              if self.tokens.count(tok) >= minOccs}
             except ValueError:
                 print('Hapax legomena need to be removed from this corpus before PCA can be applied.' +
@@ -627,7 +628,7 @@ class wumGen:
 
         return self.WUMs
 
-    def getWordUsageMatrix_Individual(self, token):
+    def getWordUsageMatrix_Individual(self, token, init=False):
         """
         Accessor for an individual word usage matrix stored in self.WUMs data member
 
@@ -640,16 +641,23 @@ class wumGen:
         -------
         wum
             word usage matrix of given token
+        init
+            whether to use at initial loading
         """
+        if init:
+            vecs = [self.embeddings[i] for i in range(len(self.embeddings)) if self.tokens[i] == token]
 
-        vecs = [self.embeddings[i] for i in range(len(self.embeddings)) if self.tokens[i] == token]
+            try:
+                return wum(np.array(vecs), [token] * len(vecs), pcaFirst=self.pcaFirst, n_components=self.n_components,
+                           random_state=self.random_state)
 
-        try:
-            return wum(np.array(vecs), [token] * len(vecs), pcaFirst=self.pcaFirst, n_components=self.n_components,
-                       random_state=self.random_state)
-
-        except KeyError:
-            print('word usage matrix of given token not found in object!: ' + token)
+            except KeyError:
+                print('word usage matrix of given token not found in object!: ' + token)
+        else:
+            try:
+                return self.WUMs[token]
+            except KeyError:
+                print('word usage matrix of given token not found in object!: ' + token)
 
     def findNearestNeighbors(self, w: wum, n_neighbors=1, ignoreTokens: list = None):
         """
