@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.spatial.distance import cosine
-from cwe_distance import wum, wumGen
 from sklearn.decomposition import PCA
+from . import wum, wumGen
 from tqdm.auto import tqdm
 
 
