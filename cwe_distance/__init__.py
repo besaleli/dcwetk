@@ -159,6 +159,10 @@ class score:
 
         plt.show()
 
+    def match_clusters(self, other):
+        new_DF, change_rules = match(other, self)
+        return score(self.n_clusters, self.clustering_method, self.silhouetteScore, new_DF, self.tokens), change_rules
+
 
 class wum:
     def __init__(self, u, addresses=None, token=None, pcaFirst=False, n_components=2, random_state=10):
