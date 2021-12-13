@@ -68,6 +68,9 @@ class token:
     def __len__(self):
         return len(self.lemmas)
 
+    def __str__(self):
+        return self.raw_tok
+
 
 class sentence:
     def __init__(self, sentInfo=None):

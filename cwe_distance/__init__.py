@@ -26,6 +26,84 @@ class pcaError(Exception):
 ##################################################################
 
 # TODO: documentation
+def match(t1_score, t2_score):
+    cos = distance.cosine
+
+    def part(dataframe):
+        grouped = dataframe.groupby(dataframe.cluster)
+        return [(i, grouped.get_group(i)) for i in set(dataframe['cluster'].to_list())]
+
+    def prototype(dataframe):
+        x = dataframe['x'].to_list()
+        y = dataframe['y'].to_list()
+        vecs = [np.array([x[i], y[i]]) for i in range(len(x))]
+        return np.array(sum(vecs)) / len(vecs)
+
+    t1_df = t1_score.df.copy(deep=True)
+    t2_df = t2_score.df.copy(deep=True)
+
+    t1_df_partitioned = part(t1_df)
+    t2_df_partitioned = part(t2_df)
+
+    cluster_distances = []
+
+    for t1_cluster in t1_df_partitioned:
+        for t2_cluster in t2_df_partitioned:
+            data_dict = {'t1_cluster': t1_cluster[0],
+                         't2_cluster': t2_cluster[0],
+                         'distance': cos(prototype(t1_cluster[1]), prototype(t2_cluster[1]))}
+            cluster_distances.append(data_dict)
+
+    change_rules = {}
+
+    t1_clusters = list(map(lambda i: i[0], t1_df_partitioned))
+    t2_clusters = list(map(lambda i: i[0], t2_df_partitioned))
+
+    # if number of clusters doesn't change over time or increases over time
+    if len(t1_df_partitioned) <= len(t2_df_partitioned):
+        # make rules for all clusters in t1 that appear in t2
+        for t1_cluster in map(lambda i: i[0], t1_df_partitioned):
+            t2_equivalent_cluster = min(list(filter(lambda i: i['t1_cluster'] == t1_cluster, cluster_distances)),
+                                        key=lambda i: i['distance'])['t2_cluster']
+            change_rules[t2_equivalent_cluster] = t1_cluster
+
+        if len(t1_df_partitioned) < len(t2_df_partitioned):
+            # make rules for all clusters in t2 that don't appear in t1
+            max_val = max(change_rules.values()) + 1
+            new_clusts = 0
+            for t2_cluster in t2_clusters:
+                if t2_cluster not in change_rules.keys():
+                    change_rules[t2_cluster] = max_val
+                    max_val += 1
+                    new_clusts += 1
+
+            print(str(new_clusts) + ' new clusters detected.')
+
+    # if number of clusters decreases over time
+    else:
+        # make rules for all clusters that t2 that appear in t1
+        for t2_cluster in map(lambda i: i[0], t2_df_partitioned):
+            t1_equivalent_cluster = min(list(filter(lambda i: i['t2_cluster'] == t2_cluster, cluster_distances)),
+                                        key=lambda i: i['distance'])['t1_cluster']
+            change_rules[t2_cluster] = t1_equivalent_cluster
+
+        # make rules for all clusters in t1 that don't appear in t2
+        max_key = max(change_rules.keys()) + 1
+        new_clusts = 0
+        for t1_cluster in t1_clusters:
+            if t1_cluster not in change_rules.values():
+                change_rules[max_key] = t1_cluster
+                max_key += 1
+                new_clusts += 1
+
+        print(str(new_clusts) + ' clusters lost.')
+
+    t2_df['cluster'] = t2_df['cluster'].apply(lambda i: change_rules[i])
+
+    return t2_df, change_rules
+
+
+# TODO: documentation
 class score:
     def __init__(self, n_clusters: int, clustering_method, silhouetteScore: float, df, tokens: set):
         self.n_clusters = n_clusters
