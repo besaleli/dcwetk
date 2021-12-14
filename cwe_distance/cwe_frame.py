@@ -55,17 +55,16 @@ def makeWUM(docs, search_token):
         return None
 
 
-def concatenateDocumentLists(*args):
+def makeNewDocList(raw_docs):
     newDocumentList = []
     max_ID = 0
-    for li in args:
-        for doc in li:
-            newDoc = dict()
-            newDoc['year'] = doc.year
-            newDoc['sents'] = doc.sents
-            newDoc['doc_ID'] = max_ID
-            newDocumentList.append(document(docInfo=newDoc))
-            max_ID += 1
+    for doc in raw_docs:
+        newDoc = dict()
+        newDoc['year'] = doc.year
+        newDoc['sents'] = doc.sents
+        newDoc['doc_ID'] = max_ID
+        newDocumentList.append(document(docInfo=newDoc))
+        max_ID += 1
 
     return newDocumentList
 

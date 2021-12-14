@@ -293,7 +293,7 @@ class wum:
         return 0
 
     # TODO: broken lol -- gives an error about incompatible np array shapes
-    def jsd(self, other_wum, clusterMethod=None):
+    def jsd(self, other_wum, clusterMethod=KMeans):
         """
         Calculates Jensen-Shannon Divergence between embedding clusters of the wum object and another wum objects
 
