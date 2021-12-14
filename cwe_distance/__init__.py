@@ -26,7 +26,7 @@ class pcaError(Exception):
 ##################################################################
 
 # TODO: documentation
-def match(t1_score, t2_score):
+def match(score1, score2):
     cos = distance.cosine
 
     def part(dataframe):
@@ -39,68 +39,62 @@ def match(t1_score, t2_score):
         vecs = [np.array([x[i], y[i]]) for i in range(len(x))]
         return np.array(sum(vecs)) / len(vecs)
 
-    t1_df = t1_score.df.copy(deep=True)
-    t2_df = t2_score.df.copy(deep=True)
+    df1 = score1.df.copy(deep=True)
+    df2 = score2.df.copy(deep=True)
 
-    t1_df_partitioned = part(t1_df)
-    t2_df_partitioned = part(t2_df)
+    clusters = lambda i: [x[0] for x in i]
 
-    cluster_distances = []
+    # make partitioned clusters with prototypes
+    df1_partitioned = [(clus, prototype(df)) for clus, df in part(df1)]
+    df2_partitioned = [(clus, prototype(df)) for clus, df in part(df2)]
 
-    for t1_cluster in t1_df_partitioned:
-        for t2_cluster in t2_df_partitioned:
-            data_dict = {'t1_cluster': t1_cluster[0],
-                         't2_cluster': t2_cluster[0],
-                         'distance': cos(prototype(t1_cluster[1]), prototype(t2_cluster[1]))}
-            cluster_distances.append(data_dict)
+    df1_clusters = clusters(df1_partitioned)
+    df2_clusters = clusters(df2_partitioned)
+
+    scores = []
+    # make list of scores
+    for clus1, proto1 in df1_partitioned:
+        for clus2, proto2 in df2_partitioned:
+            score_data = {'clus1': clus1, 'clus2': clus2, 'dist': cos(proto1, proto2)}
+            scores.append(score_data)
+
+    # sort list of scores by distance, in ascending order
+    scores.sort(key=lambda i: i['dist'])
 
     change_rules = {}
 
-    t1_clusters = list(map(lambda i: i[0], t1_df_partitioned))
-    t2_clusters = list(map(lambda i: i[0], t2_df_partitioned))
+    # if there are more clusters in df1 than df2
+    if len(df1_clusters) > len(df2_clusters):
+        for s in scores:
+            if s['clus2'] not in change_rules.keys():
+                change_rules[s['clus2']] = s['clus1']
 
-    # if number of clusters doesn't change over time or increases over time
-    if len(t1_df_partitioned) <= len(t2_df_partitioned):
-        # make rules for all clusters in t1 that appear in t2
-        for t1_cluster in map(lambda i: i[0], t1_df_partitioned):
-            t2_equivalent_cluster = min(list(filter(lambda i: i['t1_cluster'] == t1_cluster, cluster_distances)),
-                                        key=lambda i: i['distance'])['t2_cluster']
-            change_rules[t2_equivalent_cluster] = t1_cluster
+    # if there are fewer clusters in df1 than df2
+    elif len(df1_clusters) < len(df2_clusters):
+        for s in scores:
+            if s['clus1'] not in change_rules.values():
+                change_rules[s['clus2']] = s['clus1']
 
-        if len(t1_df_partitioned) < len(t2_df_partitioned):
-            # make rules for all clusters in t2 that don't appear in t1
-            max_val = max(change_rules.values()) + 1
-            new_clusts = 0
-            for t2_cluster in t2_clusters:
-                if t2_cluster not in change_rules.keys():
-                    change_rules[t2_cluster] = max_val
-                    max_val += 1
-                    new_clusts += 1
+        # find clusters in df2 for which there are not rules yet
+        extra_clusters = []
+        for c in df2_clusters:
+            if c not in change_rules.keys():
+                extra_clusters.append(c)
 
-            print(str(new_clusts) + ' new clusters detected.')
+        # generate collision-free IDs for extra clusters
+        max_val = max(change_rules.keys())
+        for ec in extra_clusters:
+            change_rules[ec] = max_val
+            max_val += 1
 
-    # if number of clusters decreases over time
+    # if there are an equal number of clusters in df1 and df2
     else:
-        # make rules for all clusters that t2 that appear in t1
-        for t2_cluster in map(lambda i: i[0], t2_df_partitioned):
-            t1_equivalent_cluster = min(list(filter(lambda i: i['t2_cluster'] == t2_cluster, cluster_distances)),
-                                        key=lambda i: i['distance'])['t1_cluster']
-            change_rules[t2_cluster] = t1_equivalent_cluster
+        for s in scores:
+            if s['clus1'] not in change_rules.keys() and s['clus2'] not in change_rules.values():
+                change_rules[s['clus2']] = s['clus1']
 
-        # make rules for all clusters in t1 that don't appear in t2
-        max_key = max(change_rules.keys()) + 1
-        new_clusts = 0
-        for t1_cluster in t1_clusters:
-            if t1_cluster not in change_rules.values():
-                change_rules[max_key] = t1_cluster
-                max_key += 1
-                new_clusts += 1
-
-        print(str(new_clusts) + ' clusters lost.')
-
-    t2_df['cluster'] = t2_df['cluster'].apply(lambda i: change_rules[i])
-
-    return t2_df, change_rules
+    df2['cluster'].replace(change_rules, inplace=True)
+    return df2, change_rules
 
 
 def getDistribution(s):
@@ -344,7 +338,8 @@ class wum:
         x_dist = np.array(list(map(lambda i: i[1], x)))
         y_dist = np.array(list(map(lambda i: i[1], y)))
 
-        return distance.jensenshannon(x_dist, y_dist)
+        jsd = distance.jensenshannon(x_dist, y_dist)
+        return jsd
 
     def div(self, other_wum):
         """
@@ -361,8 +356,10 @@ class wum:
             DIV
 
         """
-
-        p1, p2 = self.getPrototype(), other_wum.getPrototype()
+        if self.pcaFirst:
+            p1, p2 = sum(self.u) / len(self.u), sum(other_wum.u) / len(other_wum.u)
+        else:
+            p1, p2 = self.getPrototype(), other_wum.getPrototype()
         dists_from_p1 = np.array([distance.cosine(vec, p1) for vec in self.u])
         dists_from_p2 = np.array([distance.cosine(vec, p2) for vec in other_wum.getWUM()])
         var_coefficient_1 = np.sum(dists_from_p1) / self.u.size
