@@ -103,6 +103,35 @@ def match(t1_score, t2_score):
     return t2_df, change_rules
 
 
+def getDistribution(s):
+    clusters = s.df['cluster'].to_list()
+    clusters_iter = range(min(clusters), max(clusters) + 1)
+    distribution = []
+    for i in clusters_iter:
+        probability = clusters.count(i) / len(clusters)
+        distribution.append(probability)
+    return list(zip(list(clusters_iter), distribution))
+
+
+def alignDistributions(distr1, distr2):
+    distrs = [list(distr1), list(distr2)]
+    distrs.sort(key=lambda i: len(i))
+    clus = lambda i: i[0]
+    # if probability distributions are not equal
+    if len(distr1) != len(distr2):
+        for cluster, probability in distrs[1]:
+            # if cluster is not in the smaller distribution
+            if cluster not in list(map(clus, distrs[0])):
+                # append tuple to smaller distribution of (cluster, 0)
+                distrs[0].append((cluster, 0.0))
+
+    # sort distributions by cluster
+    distrs[0].sort(key=clus)
+    distrs[1].sort(key=clus)
+
+    return distrs[0], distrs[1]
+
+
 # TODO: documentation
 class score:
     def __init__(self, n_clusters: int, clustering_method, silhouetteScore: float, df, tokens: set):
@@ -306,7 +335,17 @@ class wum:
 
         """
 
-        return 0
+        self_score = self.cluster(random_state=self.random_state, clusterMethod=clusterMethod, plot=False)[0]
+        other_score, change_rules = other_wum.cluster(random_state=self.random_state,
+                                                      clusterMethod=clusterMethod, plot=False)[0].match_clusters(
+            self_score)
+
+        x, y = alignDistributions(getDistribution(self_score), getDistribution(other_score))
+
+        x_dist = np.array(list(map(lambda i: i[1], x)))
+        y_dist = np.array(list(map(lambda i: i[1], y)))
+
+        return distance.jensenshannon(x_dist, y_dist)
 
     def div(self, other_wum):
         """
