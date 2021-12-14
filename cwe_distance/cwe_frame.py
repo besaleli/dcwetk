@@ -5,6 +5,56 @@ from . import wum, wumGen
 from tqdm.auto import tqdm
 
 
+def getVocabulary(docs):
+    vocab = set()
+    for doc in docs:
+        for s in doc:
+            for tok in s:
+                for lem in tok:
+                    vocab.add(lem.lemma)
+
+    return vocab
+
+
+def getLemmas(docs, search_token):
+    instances = []
+    addresses = []
+    for doc in docs:
+        for s in doc:
+            for tok in s:
+                for lem in tok:
+                    if lem.lemma == search_token:
+                        addr = [doc.doc_ID, s.sent_ID, tok.tok_ID]
+                        instances.append(lem)
+                        addresses.append(addr)
+
+    return instances, addresses
+
+
+def findElement(docs, addr):
+    # document address
+    if len(addr) == 1:
+        return docs[addr[0]]
+    # sentence address
+    elif len(addr) == 2:
+        return docs[addr[0]][addr[1]]
+    # token address
+    elif len(addr) == 3:
+        return docs[addr[0]][addr[1]][addr[2]]
+    else:
+        raise KeyError('Invalid address')
+
+
+def makeWUM(docs, search_token):
+    lemmas, addresses = getLemmas(docs, search_token)
+    if len(lemmas) > 2:
+        u = np.array([l.embedding for l in lemmas])
+        toks = [search_token] * len(u)
+        return wum(u, addresses=addresses, token=toks, pcaFirst=True)
+    else:
+        return None
+
+
 class lemma:
     def __init__(self, lemmaInfo=None):
         # dict constructor
