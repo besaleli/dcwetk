@@ -5,13 +5,13 @@ from . import wum, wumGen
 from tqdm.auto import tqdm
 
 
-def getVocabulary(docs):
-    vocab = set()
+def getVocabulary(docs, asSet=False):
+    vocab = set() if asSet else []
     for doc in docs:
         for s in doc:
             for tok in s:
                 for lem in tok:
-                    vocab.add(lem.lemma)
+                    vocab.add(lem.lemma) if asSet else vocab.append(lem.lemma)
 
     return vocab
 
@@ -191,6 +191,15 @@ class document:
 
     def __len__(self):
         return len(self.sents)
+
+    def vocab(self, asSet=False):
+        lemmas = set() if asSet else []
+        for sent in self.sents:
+            for tok in sent:
+                for lem in tok:
+                    lemmas.add(lem.lemma) if asSet else lemmas.append(lem.lemma)
+
+        return lemmas
 
 
 def make_WUM(tok, tokens, embeddings, addresses, pcaFirst, n_components, random_state):
