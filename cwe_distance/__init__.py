@@ -11,6 +11,8 @@ import warnings
 from tabulate import tabulate
 from nltk.probability import FreqDist
 from typing import Union
+import random
+import math
 
 
 # Exceptions ####################################################
@@ -24,14 +26,14 @@ class pcaError(Exception):
 
 
 ##################################################################
+def part(dataframe):
+    grouped = dataframe.groupby(dataframe.cluster)
+    return [(i, grouped.get_group(i)) for i in set(dataframe['cluster'].to_list())]
+
 
 # TODO: documentation
 def match(score1, score2):
     cos = distance.cosine
-
-    def part(dataframe):
-        grouped = dataframe.groupby(dataframe.cluster)
-        return [(i, grouped.get_group(i)) for i in set(dataframe['cluster'].to_list())]
 
     def prototype(dataframe):
         x = dataframe['x'].to_list()
@@ -299,11 +301,11 @@ class wum:
                 Inverted cosine similarity over word prototypes of this and other wum objects
         """
 
-        p1, p2 = self.getPrototype(), other_wum.getPrototype()
-        return 1 / distance.cosine(p1, p2)
+        p1, p2 = self.prototype, other_wum.prototype
+        return 1 / (1 - distance.cosine(p1, p2))
 
     # TODO
-    def apd(self, other_wum):
+    def apd(self, other_wum, sample=None):
         """
         Calculates average pairwise cosine distance between token embeddings of the wum object, given another wum object
 
@@ -313,9 +315,18 @@ class wum:
         -------
 
         """
-        return 0
+        averages = []
 
-    def jsd(self, other_wum, clusterMethod=KMeans):
+        u_vecs = random.sample(list(self.u), math.floor(len(self) * sample)) if sample else self.u
+        v_vecs = random.sample(list(other_wum.u), math.floor(len(other_wum) * sample)) if sample else other_wum.u
+
+        for u in u_vecs:
+            for v in v_vecs:
+                averages.append(distance.cosine(u, v))
+
+        return (1 / (len(self) * len(other_wum))) * sum(averages)
+
+    def jsd(self, other_wum, clusterMethod=KMeans, returnMetadata=False):
         """
         Calculates Jensen-Shannon Divergence between embedding clusters of the wum object and another wum objects
 
@@ -327,6 +338,7 @@ class wum:
             Jensen-Shannon distance between wum and other wum
 
         """
+        metadata = {}
 
         self_score = self.cluster(random_state=self.random_state, clusterMethod=clusterMethod, plot=False)[0]
         other_score, change_rules = other_wum.cluster(random_state=self.random_state,
@@ -335,11 +347,19 @@ class wum:
 
         x, y = alignDistributions(getDistribution(self_score), getDistribution(other_score))
 
+        metadata['w1_score'] = self_score.silhouetteScore
+        metadata['w2_score'] = other_score.silhouetteScore
+        metadata['w1_n_clusters'] = self_score.n_clusters
+        metadata['w2_n_clusters'] = other_score.n_clusters
+
         x_dist = np.array(list(map(lambda i: i[1], x)))
         y_dist = np.array(list(map(lambda i: i[1], y)))
 
         jsd = distance.jensenshannon(x_dist, y_dist)
-        return jsd
+        if returnMetadata:
+            return jsd, metadata
+        else:
+            return jsd
 
     def div(self, other_wum):
         """
