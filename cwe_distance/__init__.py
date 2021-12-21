@@ -324,7 +324,7 @@ class wum:
             for v in v_vecs:
                 averages.append(distance.cosine(u, v))
 
-        return (1 / (len(self) * len(other_wum))) * sum(averages)
+        return (1 / (len(u_vecs) * len(v_vecs))) * sum(averages)
 
     def jsd(self, other_wum, clusterMethod=KMeans, returnMetadata=False):
         """
