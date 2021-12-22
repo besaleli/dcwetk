@@ -316,9 +316,15 @@ class wum:
 
         """
         averages = []
-
+        bad = False
         u_vecs = random.sample(list(self.u), math.floor(len(self) * sample)) if sample else self.u
         v_vecs = random.sample(list(other_wum.u), math.floor(len(other_wum) * sample)) if sample else other_wum.u
+
+        # sometimes sample size is 0 and that's an issue lol
+        if sample and len(u_vecs) == 0 or len(v_vecs) == 0:
+            bad = True
+            u_vecs = self.u
+            v_vecs = other_wum.u
 
         for u in u_vecs:
             for v in v_vecs:

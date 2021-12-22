@@ -45,12 +45,12 @@ def findElement(docs, addr):
         raise KeyError('Invalid address')
 
 
-def makeWUM(docs, search_token):
+def makeWUM(docs, search_token, pcaFirst=True):
     lemmas, addresses = getLemmas(docs, search_token)
     if len(lemmas) > 2:
         u = np.array([l.embedding for l in lemmas])
         toks = [search_token] * len(u)
-        return wum(u, addresses=addresses, token=toks, pcaFirst=True)
+        return wum(u, addresses=addresses, token=toks, pcaFirst=pcaFirst)
     else:
         return None
 
