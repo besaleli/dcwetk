@@ -140,8 +140,7 @@ class score:
     def __str__(self):
         info = ['Number of clusters: ' + str(self.n_clusters),
                 'Clustering method: ' + self.clustering_method.__name__,
-                'Silhouette Score: ' + str(self.silhouetteScore),
-                'Number of tokens: ' + str(len(self.tokens))]
+                'Silhouette Score: ' + str(self.silhouetteScore)]
 
         return '\n'.join(info)
 
@@ -170,8 +169,9 @@ class score:
 
         # make the plt plot
         right_to_left = lambda i: i[::-1] if (formatText == 'right_to_left' and not padsInTokens) else i
-        tokensTitle = tokens if tokens else self.tokens
-        plt.suptitle(right_to_left(', '.join(tokensTitle)), size=10)
+        tokensTitle = tokens
+        if tokens:
+            plt.suptitle(right_to_left(', '.join(tokensTitle)), size=10)
         plt.scatter(df_to_plot['x'], df_to_plot['y'], c=df_to_plot['cluster'], cmap='copper')
         plt.title('\n' + n_clusters_str + " | " + clustering_method_str + " | " + silhouette_score_str + '\n' + wumSize,
                   fontdict={'fontsize': 9})
@@ -186,7 +186,7 @@ class score:
 
     def match_clusters(self, other):
         new_DF, change_rules = match(other, self)
-        return score(self.n_clusters, self.clustering_method, self.silhouetteScore, new_DF, self.tokens), change_rules
+        return score(self.n_clusters, self.clustering_method, self.silhouetteScore, new_DF), change_rules
 
 
 class wum:
