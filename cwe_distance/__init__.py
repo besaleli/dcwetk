@@ -151,7 +151,7 @@ class score:
         wumSize = '# embeddings: ' + str(len(self.df))
 
         pads = {'[CLS]', '[SEP]'}
-        padsInTokens = pads.intersection(self.tokens)
+        padsInTokens = pads.intersection(tokens)
 
         df_fields = ['words', 'x', 'y', 'cluster']
         filtered_dict = dict()
@@ -585,7 +585,7 @@ class wum:
                                'cluster': list(model.labels_)})
 
             candidateData = score(n_clusters=candidate[0], clustering_method=candidate[1], silhouetteScore=candidate[2],
-                                  df=df, tokens=set(self.tokens))
+                                  df=df)
 
             candidatesData.append(candidateData)
 
