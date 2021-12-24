@@ -130,12 +130,11 @@ def alignDistributions(distr1, distr2):
 
 # TODO: documentation
 class score:
-    def __init__(self, n_clusters: int, clustering_method, silhouetteScore: float, df, tokens: set):
+    def __init__(self, n_clusters: int, clustering_method, silhouetteScore: float, df):
         self.n_clusters = n_clusters
         self.clustering_method = clustering_method
         self.silhouetteScore = silhouetteScore
         self.df = df
-        self.tokens = tokens
 
     def __str__(self):
         info = ['Number of clusters: ' + str(self.n_clusters),
