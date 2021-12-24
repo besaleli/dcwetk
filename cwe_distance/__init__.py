@@ -581,7 +581,6 @@ class wum:
                 model = clusteringMethod(n_clusters=candidate[0]).fit(pca)
 
             df = pd.DataFrame({'token': self.tokens,
-                               'address': self.addresses,
                                'x': [i[0] for i in pca],
                                'y': [i[1] for i in pca],
                                'cluster': list(model.labels_)})
