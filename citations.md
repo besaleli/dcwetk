@@ -1,6 +1,4 @@
 ## Papers
-Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V., Thirion, B., Grisel, O., Blondel, M., Prettenhofer, P., Weiss, R., Dubourg, V., Vanderplas, J., Passos, D., Brucher, M., Perrot, M., & Duchesnay, E. (2011). Scikit-learn: Machine Learning in Python. Journal of Machine Learning Research, 12, 2825–2830.
-<br><br>
 Kutuzov, A. (2020). Distributional word embeddings in modeling diachronic semantic change.
 <br><br>
 Giulianelli, M., Del Tredici, M., Fernandez, R. (2020). Analysing Lexical Semantic Change with Contextualised Word Representations. In Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics (pp. 3960–3973). Association for Computational Linguistics.
@@ -16,6 +14,7 @@ Seker, A., Bandel, E., Bareket, D., Brusilovsky, I., Shaked Greenfeld, R., Tsafa
 <br><br>
 Eric Jones, Travis Oliphant, Pearu Peterson, & others. (2001–). SciPy: Open source scientific tools for Python. 
 <br><br>
+Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V., Thirion, B., Grisel, O., Blondel, M., Prettenhofer, P., Weiss, R., Dubourg, V., Vanderplas, J., Passos, D., Brucher, M., Perrot, M., & Duchesnay, E. (2011). Scikit-learn: Machine Learning in Python. Journal of Machine Learning Research, 12, 2825–2830.
 
 ## Websites & Tutorials
 Chris McCormick and Nick Ryan. (2019, May 14). BERT Word Embeddings Tutorial. Retrieved from http://www.mccormickml.com
