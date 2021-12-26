@@ -11,8 +11,10 @@ import warnings
 from tabulate import tabulate
 from nltk.probability import FreqDist
 from typing import Union
-import random
+from random import sample as s
 import math
+import torch
+import time
 
 
 # Exceptions ####################################################
@@ -304,7 +306,7 @@ class wum:
         return 1 / (1 - distance.cosine(p1, p2))
 
     # TODO
-    def apd(self, other_wum, sample=None):
+    def apd(self, other_wum, sample=None, min_sample_size=10, device=None, verbose=False):
         """
         Calculates average pairwise cosine distance between token embeddings of the wum object, given another wum object
 
@@ -314,22 +316,43 @@ class wum:
         -------
 
         """
-        averages = []
-        bad = False
-        u_vecs = random.sample(list(self.u), math.floor(len(self) * sample)) if sample else self.u
-        v_vecs = random.sample(list(other_wum.u), math.floor(len(other_wum) * sample)) if sample else other_wum.u
+        torchCos = torch.nn.CosineSimilarity(dim=1)
+        dist_from_sim = lambda i: 1 - i
+        tqdmCond = lambda i: tqdm(i) if verbose else i
+        sample_n = lambda i: math.floor(len(i) * sample)
+        start = time.time()
+        toTorch = lambda i: torch.tensor(np.array(i), device=device) if device else torch.tensor(np.array(i))
 
-        # sometimes sample size is 0 and that's an issue lol
-        if sample and len(u_vecs) == 0 or len(v_vecs) == 0:
-            bad = True
-            u_vecs = self.u
-            v_vecs = other_wum.u
+        prev_n = sample_n(self)
+        curr_n = sample_n(other_wum)
+        print(prev_n)
+        print(curr_n)
 
-        for u in u_vecs:
-            for v in v_vecs:
-                averages.append(distance.cosine(u, v))
+        prevSample = s(list(self.u), prev_n) if prev_n >= min_sample_size else list(self.u)
+        currSample = s(list(other_wum.u), curr_n) if curr_n >= min_sample_size else list(other_wum.u)
 
-        return (1 / (len(u_vecs) * len(v_vecs))) * sum(averages)
+        arr1, arr2 = [], []
+        for x, y in tqdmCond(((x, y) for x in prevSample for y in currSample)):
+            arr1.append(x)
+            arr2.append(y)
+
+        print(len(arr1))
+        print(len(arr2))
+
+        arr1_t, arr2_t = toTorch(arr1), toTorch(arr2)
+
+        distances = list(map(dist_from_sim, torchCos(arr1_t, arr2_t)))
+
+        apd_dist = sum(distances) / len(distances)
+
+        del arr1_t, arr2_t
+
+        end = time.time()
+
+        if verbose:
+            print('RUNTIME: ' + str(end - start))
+
+        return float(apd_dist)
 
     def jsd(self, other_wum, clusterMethod=KMeans, returnMetadata=False):
         """
