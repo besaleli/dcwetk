@@ -310,8 +310,6 @@ class wum:
         """
         Calculates average pairwise cosine distance between token embeddings of the wum object, given another wum object
 
-        wrapper fn for sklearn.metrics.pairwise.cosine_distances
-
         Returns
         -------
 
@@ -325,8 +323,6 @@ class wum:
 
         prev_n = sample_n(self)
         curr_n = sample_n(other_wum)
-        print(prev_n)
-        print(curr_n)
 
         prevSample = s(list(self.u), prev_n) if prev_n >= min_sample_size else list(self.u)
         currSample = s(list(other_wum.u), curr_n) if curr_n >= min_sample_size else list(other_wum.u)
@@ -335,9 +331,6 @@ class wum:
         for x, y in tqdmCond(((x, y) for x in prevSample for y in currSample)):
             arr1.append(x)
             arr2.append(y)
-
-        print(len(arr1))
-        print(len(arr2))
 
         arr1_t, arr2_t = toTorch(arr1), toTorch(arr2)
 
