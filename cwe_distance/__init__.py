@@ -324,8 +324,8 @@ class wum:
         prev_n = sample_n(self)
         curr_n = sample_n(other_wum)
 
-        prevSample = s(list(self.u), prev_n) if prev_n >= min_sample_size else list(self.u)
-        currSample = s(list(other_wum.u), curr_n) if curr_n >= min_sample_size else list(other_wum.u)
+        prevSample = s(list(self.u), prev_n) if prev_n >= min_sample_size and sample else list(self.u)
+        currSample = s(list(other_wum.u), curr_n) if curr_n >= min_sample_size and sample else list(other_wum.u)
 
         arr1, arr2 = [], []
         for x, y in tqdmCond(((x, y) for x in prevSample for y in currSample)):
