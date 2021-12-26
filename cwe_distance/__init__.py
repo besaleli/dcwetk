@@ -321,8 +321,8 @@ class wum:
         start = time.time()
         toTorch = lambda i: torch.tensor(np.array(i), device=device) if device else torch.tensor(np.array(i))
 
-        prev_n = sample_n(self) if sample else None
-        curr_n = sample_n(other_wum) if sample else None
+        prev_n = sample_n(self) if sample else 0
+        curr_n = sample_n(other_wum) if sample else 0
 
         prevSample = s(list(self.u), prev_n) if prev_n >= min_sample_size and sample else list(self.u)
         currSample = s(list(other_wum.u), curr_n) if curr_n >= min_sample_size and sample else list(other_wum.u)
