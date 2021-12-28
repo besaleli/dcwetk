@@ -402,9 +402,9 @@ class wum:
         else:
             p1, p2 = self.getPrototype(), other_wum.getPrototype()
         dists_from_p1 = np.array([distance.cosine(vec, p1) for vec in self.u])
-        dists_from_p2 = np.array([distance.cosine(vec, p2) for vec in other_wum.getWUM()])
-        var_coefficient_1 = np.sum(dists_from_p1) / self.u.size
-        var_coefficient_2 = np.sum(dists_from_p2) / other_wum.getWUM().size
+        dists_from_p2 = np.array([distance.cosine(vec, p2) for vec in other_wum.u])
+        var_coefficient_1 = np.sum(dists_from_p1) / len(self.u)
+        var_coefficient_2 = np.sum(dists_from_p2) / len(other_wum.u)
 
         return abs(var_coefficient_1 - var_coefficient_2)
 
