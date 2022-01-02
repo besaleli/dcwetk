@@ -1,9 +1,10 @@
 from scipy.spatial import distance
 import numpy as np
-from sklearn.cluster import KMeans, AgglomerativeClustering, SpectralClustering
+from sklearn.cluster import KMeans, AgglomerativeClustering, SpectralClustering, AffinityPropagation
 from sklearn_extra.cluster import KMedoids
 from sklearn.metrics import silhouette_score
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import normalize
 import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
@@ -28,106 +29,47 @@ class pcaError(Exception):
 
 
 ##################################################################
+
+def standardize(w):
+    prototype = sum(w) / len(w)
+    w_no_mean = np.array([i - prototype for i in w])
+    w_scaled = normalize(w_no_mean, norm='l1', axis=0)
+
+    return w_scaled
+
+
+def apcluster(u1, u2):
+    # concatenate matrices w1, w2 and make list of labels
+    concat = list(u1) + list(u2)
+    t_labels = [0] * len(u1) + [1] * len(u2)
+
+    # standardize concatenated matrices
+    standardized_matrix = standardize(concat)
+
+    # cluster by affinity propagation
+    ap = AffinityPropagation(random_state=10)
+    clusters = ap.fit_predict(standardized_matrix)
+
+    w1_clusters = [clusters[i] for i in range(len(clusters)) if t_labels[i] == 0]
+    w2_clusters = [clusters[i] for i in range(len(clusters)) if t_labels[i] == 1]
+
+    return w1_clusters, w2_clusters
+
+
+def distributions(cluster_w1, cluster_w2):
+    clusters = cluster_w1 + cluster_w2
+
+    fd = lambda vec: np.array([vec.count(i) / len(vec) for i in set(clusters)])
+
+    w1_dist = fd(cluster_w1)
+    w2_dist = fd(cluster_w2)
+
+    return w1_dist, w2_dist
+
+
 def part(dataframe):
-    grouped = dataframe.groupby(dataframe.cluster)
+    grouped = dataframe.groupby(dataframe.apcluster)
     return [(i, grouped.get_group(i)) for i in set(dataframe['cluster'].to_list())]
-
-
-# TODO: documentation
-def match(score1, score2):
-    cos = distance.cosine
-
-    def prototype(dataframe):
-        x = dataframe['x'].to_list()
-        y = dataframe['y'].to_list()
-        vecs = [np.array([x[i], y[i]]) for i in range(len(x))]
-        return np.array(sum(vecs)) / len(vecs)
-
-    df1 = score1.df.copy(deep=True)
-    df2 = score2.df.copy(deep=True)
-
-    clusters = lambda i: [x[0] for x in i]
-
-    # make partitioned clusters with prototypes
-    df1_partitioned = [(clus, prototype(df)) for clus, df in part(df1)]
-    df2_partitioned = [(clus, prototype(df)) for clus, df in part(df2)]
-
-    df1_clusters = clusters(df1_partitioned)
-    df2_clusters = clusters(df2_partitioned)
-
-    scores = []
-    # make list of scores
-    for clus1, proto1 in df1_partitioned:
-        for clus2, proto2 in df2_partitioned:
-            score_data = {'clus1': clus1, 'clus2': clus2, 'dist': cos(proto1, proto2)}
-            scores.append(score_data)
-
-    # sort list of scores by distance, in ascending order
-    scores.sort(key=lambda i: i['dist'])
-
-    change_rules = {}
-
-    # if there are more clusters in df1 than df2
-    if len(df1_clusters) > len(df2_clusters):
-        for s in scores:
-            if s['clus2'] not in change_rules.keys():
-                change_rules[s['clus2']] = s['clus1']
-
-    # if there are fewer clusters in df1 than df2
-    elif len(df1_clusters) < len(df2_clusters):
-        for s in scores:
-            if s['clus1'] not in change_rules.values():
-                change_rules[s['clus2']] = s['clus1']
-
-        # find clusters in df2 for which there are not rules yet
-        extra_clusters = []
-        for c in df2_clusters:
-            if c not in change_rules.keys():
-                extra_clusters.append(c)
-
-        # generate collision-free IDs for extra clusters
-        max_val = max(change_rules.keys())
-        for ec in extra_clusters:
-            change_rules[ec] = max_val
-            max_val += 1
-
-    # if there are an equal number of clusters in df1 and df2
-    else:
-        for s in scores:
-            if s['clus1'] not in change_rules.keys() and s['clus2'] not in change_rules.values():
-                change_rules[s['clus2']] = s['clus1']
-
-    df2['cluster'].replace(change_rules, inplace=True)
-    return df2, change_rules
-
-
-def getDistribution(s):
-    clusters = s.df['cluster'].to_list()
-    clusters_iter = range(min(clusters), max(clusters) + 1)
-    distribution = []
-    for i in clusters_iter:
-        probability = clusters.count(i) / len(clusters)
-        distribution.append(probability)
-    return list(zip(list(clusters_iter), distribution))
-
-
-def alignDistributions(distr1, distr2):
-    distrs = [list(distr1), list(distr2)]
-    distrs.sort(key=lambda i: len(i))
-    clus = lambda i: i[0]
-    # if probability distributions are not equal
-    if len(distr1) != len(distr2):
-        for cluster, probability in distrs[1]:
-            # if cluster is not in the smaller distribution
-            if cluster not in list(map(clus, distrs[0])):
-                # append tuple to smaller distribution of (cluster, 0)
-                distrs[0].append((cluster, 0.0))
-
-    # sort distributions by cluster
-    distrs[0].sort(key=clus)
-    distrs[1].sort(key=clus)
-
-    return distrs[0], distrs[1]
 
 
 # TODO: documentation
@@ -184,10 +126,6 @@ class score:
             plt.savefig(filename)
 
         plt.show()
-
-    def match_clusters(self, other):
-        new_DF, change_rules = match(other, self)
-        return score(self.n_clusters, self.clustering_method, self.silhouetteScore, new_DF), change_rules
 
 
 class wum:
@@ -249,6 +187,11 @@ class wum:
 
     def __str__(self):
         return tabulate(list(zip(self.tokens, self.u)))
+
+    # TODO: Documentation
+    def sample(self, sample_size=0.5, min_sample_size=10):
+        n_vecs = math.ceil(len(self.u) * sample_size)
+        return np.array(s(self.u, n_vecs)) if n_vecs >= min_sample_size else self.u
 
     def prototypicalEquivalence(self, other):
         return True if self.prototype == other.prototype else False
@@ -347,7 +290,7 @@ class wum:
 
         return float(apd_dist)
 
-    def jsd(self, other_wum, clusterMethod=KMeans, returnMetadata=False):
+    def jsd(self, other_wum, sample=None, min_sample_size=10):
         """
         Calculates Jensen-Shannon Divergence between embedding clusters of the wum object and another wum objects
 
@@ -359,28 +302,12 @@ class wum:
             Jensen-Shannon distance between wum and other wum
 
         """
-        metadata = {}
+        samp = lambda i: i.sample(sample_size=sample, min_sample_size=min_sample_size)
+        u1, u2 = samp(self), samp(other_wum)
+        c1, c2 = apcluster(u1, u2)
+        d1, d2 = distributions(c1, c2)
 
-        self_score = self.cluster(random_state=self.random_state, clusterMethod=clusterMethod, plot=False)[0]
-        other_score, change_rules = other_wum.cluster(random_state=self.random_state,
-                                                      clusterMethod=clusterMethod, plot=False)[0].match_clusters(
-            self_score)
-
-        x, y = alignDistributions(getDistribution(self_score), getDistribution(other_score))
-
-        metadata['w1_score'] = self_score.silhouetteScore
-        metadata['w2_score'] = other_score.silhouetteScore
-        metadata['w1_n_clusters'] = self_score.n_clusters
-        metadata['w2_n_clusters'] = other_score.n_clusters
-
-        x_dist = np.array(list(map(lambda i: i[1], x)))
-        y_dist = np.array(list(map(lambda i: i[1], y)))
-
-        jsd = distance.jensenshannon(x_dist, y_dist)
-        if returnMetadata:
-            return jsd, metadata
-        else:
-            return jsd
+        return distance.jensenshannon(d1, d2) ** 2
 
     def div(self, other_wum):
         """
@@ -897,8 +824,8 @@ class wumGen:
         print_cond('Clustering...')
         for t, w in tqdm_cond(WUMs_over_threshold):
             try:
-                data[t] = w.cluster(n_candidates, clusterMethod=clusterMethod,
-                                    plot=plot, formatText=formatText)
+                data[t] = w.apcluster(n_candidates, clusterMethod=clusterMethod,
+                                      plot=plot, formatText=formatText)
 
             except SilhouetteError:
                 print(SilhouetteError)
