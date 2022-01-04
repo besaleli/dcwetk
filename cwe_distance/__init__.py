@@ -275,7 +275,7 @@ class wum:
         else:
             samp = lambda i: i
 
-        prevSample, currSample = samp(self.u), samp(other_wum.u)
+        prevSample, currSample = samp(list(self.u)), samp(list(other_wum.u))
 
         arr1, arr2 = [], []
         for x, y in tqdmCond(((x, y) for x in prevSample for y in currSample)):
@@ -315,7 +315,7 @@ class wum:
         else:
             samp = lambda i: i
 
-        u1, u2 = samp(self.u), samp(other_wum.u)
+        u1, u2 = samp(list(self.u)), samp(list(other_wum.u))
         c1, c2 = apcluster(u1, u2)
         d1, d2 = distributions(c1, c2)
 
