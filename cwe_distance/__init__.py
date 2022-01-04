@@ -315,7 +315,7 @@ class wum:
         else:
             samp = lambda i: i
 
-        u1, u2 = samp(self), samp(other_wum)
+        u1, u2 = samp(self.u), samp(other_wum.u)
         c1, c2 = apcluster(u1, u2)
         d1, d2 = distributions(c1, c2)
 
