@@ -269,9 +269,9 @@ class wum:
 
         # sample if necessary
         if sample_size is not None:
-            samp = lambda i: sample_Uw(i.u, sample_size=sample_size, min_sample_size=min_sample_size)
+            samp = lambda i: sample_Uw(i, sample_size=sample_size, min_sample_size=min_sample_size)
         elif max_sample_size is not None:
-            samp = lambda i: sample(i.u, max_sample_size) if len(i) > max_sample_size else i
+            samp = lambda i: sample(i, max_sample_size) if len(i) > max_sample_size else i
         else:
             samp = lambda i: i
 
@@ -309,9 +309,9 @@ class wum:
 
         # sample if necessary
         if sample_size is not None:
-            samp = lambda i: sample_Uw(i.u, sample_size=sample_size, min_sample_size=min_sample_size)
+            samp = lambda i: sample_Uw(i, sample_size=sample_size, min_sample_size=min_sample_size)
         elif max_sample_size is not None:
-            samp = lambda i: sample(i.u, max_sample_size) if len(i) > max_sample_size else i
+            samp = lambda i: sample(i, max_sample_size) if len(i) > max_sample_size else i
         else:
             samp = lambda i: i
 
