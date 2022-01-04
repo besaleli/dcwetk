@@ -12,10 +12,9 @@ import warnings
 from tabulate import tabulate
 from nltk.probability import FreqDist
 from typing import Union
-from random import sample as s
+from random import sample
 import math
 import torch
-import time
 
 
 # Exceptions ####################################################
@@ -32,6 +31,12 @@ class pcaError(Exception):
 
 xorCond = lambda i, j: i is None and j is not None
 paramCond = lambda i, j: xorCond(i, j) or xorCond(j, i) or (i is None and j is None)
+
+
+def sample_Uw(w, sample_size=0.5, min_sample_size=10):
+    n_vecs = math.ceil(len(w) * sample_size)
+    return np.array(sample(w, n_vecs)) if n_vecs >= min_sample_size else w
+
 
 def standardize(w):
     prototype = sum(w) / len(w)
@@ -191,11 +196,6 @@ class wum:
     def __str__(self):
         return tabulate(list(zip(self.tokens, self.u)))
 
-    # TODO: Documentation
-    def sample(self, sample_size=0.5, min_sample_size=10):
-        n_vecs = math.ceil(len(self.u) * sample_size)
-        return np.array(s(self.u, n_vecs)) if n_vecs >= min_sample_size else self.u
-
     def prototypicalEquivalence(self, other):
         return True if self.prototype == other.prototype else False
 
@@ -251,7 +251,7 @@ class wum:
         return 1 / (1 - distance.cosine(self.prototype, other_wum.prototype))
 
     # TODO
-    def apd(self, other_wum, sample=None, min_sample_size=10, device=None, verbose=False, max_sample_size=1024):
+    def apd(self, other_wum, sample_size=None, min_sample_size=10, device=None, verbose=False, max_sample_size=1024):
         """
         Calculates average pairwise cosine distance between token embeddings of the wum object, given another wum object
 
@@ -265,13 +265,13 @@ class wum:
         toTorch = lambda i: torch.tensor(np.array(i), device=device) if device else torch.tensor(np.array(i))
 
         # only sample or max_sample_size or none can have a value
-        assert paramCond(sample, max_sample_size)
+        assert paramCond(sample_size, max_sample_size)
 
         # sample if necessary
-        if sample is not None:
-            samp = lambda i: i.sample(sample_size=sample, min_sample_size=min_sample_size)
+        if sample_size is not None:
+            samp = lambda i: sample_Uw(i.u, sample_size=sample_size, min_sample_size=min_sample_size)
         elif max_sample_size is not None:
-            samp = lambda i: s(i, max_sample_size) if len(i) > max_sample_size else i
+            samp = lambda i: sample_size(i, max_sample_size) if len(i) > max_sample_size else i
         else:
             samp = lambda i: i
 
@@ -292,7 +292,7 @@ class wum:
 
         return float(apd_dist)
 
-    def jsd(self, other_wum, sample=None, min_sample_size=10, max_sample_size=None):
+    def jsd(self, other_wum, sample_size=None, min_sample_size=10, max_sample_size=None):
         """
         Calculates Jensen-Shannon Divergence between embedding clusters of the wum object and another wum objects
 
@@ -305,13 +305,13 @@ class wum:
 
         """
         # only sample or max_sample_size or none can have a value
-        assert paramCond(sample, max_sample_size)
+        assert paramCond(sample_size, max_sample_size)
 
         # sample if necessary
-        if sample is not None:
-            samp = lambda i: i.sample(sample_size=sample, min_sample_size=min_sample_size)
+        if sample_size is not None:
+            samp = lambda i: sample_Uw(i.u, sample_size=sample_size, min_sample_size=min_sample_size)
         elif max_sample_size is not None:
-            samp = lambda i: s(i, max_sample_size) if len(i) > max_sample_size else i
+            samp = lambda i: sample_size(i, max_sample_size) if len(i) > max_sample_size else i
         else:
             samp = lambda i: i
 
